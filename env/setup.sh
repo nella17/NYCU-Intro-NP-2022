@@ -32,3 +32,6 @@ echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 # useradd --uid 1000 --gid 1000 --groups root,sudo,adm,users --create-home --password '' --shell /bin/bash chuang
 # echo '%sudo ALL=(ALL) ALL' >> /etc/sudoers
 
+# disable priviledged port
+echo 'net.ipv4.ip_unprivileged_port_start=0' > /etc/sysctl.d/50-unprivileged-ports.conf
+sysctl --system
