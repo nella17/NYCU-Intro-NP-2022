@@ -2,11 +2,11 @@
 
 apt-get update
 yes | unminimize
-apt-get install -y tini iproute2 iputils-ping net-tools netcat
-apt-get install -y openssh-server sudo vim grep gawk rsync tmux man manpages manpages-dev manpages-posix manpages-posix-dev diffutils
-apt-get install -y gcc gcc-multilib g++ g++-multilib gdb make yasm nasm tcpdump libcapstone-dev python3
-apt-get install -y libc6-dbg dpkg-dev
-apt-get install -y curl git zsh
+apt-get install -y tini iproute2 iputils-ping net-tools netcat \
+    openssh-server sudo vim grep gawk rsync tmux man manpages manpages-dev manpages-posix manpages-posix-dev diffutils \
+    gcc gcc-multilib g++ g++-multilib gdb make yasm nasm tcpdump libcapstone-dev python3 \
+    libc6-dbg dpkg-dev \
+    curl git zsh
 #apt-get install -y qemu-user-static gcc-mips64-linux-gnuabi64
 #apt-get install -y musl
 #ln -s /lib/x86_64-linux-musl/libc.so /usr/lib/libc.musl-x86_64.so.1
