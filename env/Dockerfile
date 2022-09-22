@@ -29,8 +29,8 @@ RUN echo 'PermitEmptyPasswords yes' >> /etc/ssh/sshd_config
 RUN sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
 
 # add user/group, empty password, allow sudo
-RUN groupadd -g 1000 chuang
-RUN useradd --uid 1000 --gid 1000 --groups root,sudo,adm,users --create-home --password '' --shell /bin/bash chuang
+RUN groupadd -g 1000 nella17
+RUN useradd --uid 1000 --gid 1000 --groups root,sudo,adm,users --create-home --password '' --shell /bin/bash nella17
 RUN echo '%sudo ALL=(ALL) ALL' >> /etc/sudoers
 
 # run the service
