@@ -1,4 +1,4 @@
 dpkt
-scapy
+scapy >= 2.5.0*
 pyshark
 # tshark
