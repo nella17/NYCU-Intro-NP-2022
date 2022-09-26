@@ -3,7 +3,7 @@ from base64 import b64decode
 from sys import argv
 
 with open(argv[1],'rb') as f:
-    pcap = list(dpkt.pcap.Reader(f))
+    pcap = list(dpkt.pcap.UniversalReader(f))
 
 mp = {}
 for ts,pkt in pcap:
