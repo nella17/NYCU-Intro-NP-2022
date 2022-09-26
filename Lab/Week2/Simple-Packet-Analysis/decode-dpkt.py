@@ -2,20 +2,23 @@ import dpkt
 from base64 import b64decode
 from sys import argv
 
-def packet2ip(packet):
-    parser = [
-        dpkt.ethernet.Ethernet,
-        dpkt.sll2.SLL2,
-    ]
-    for func in parser:
-        pack = func(packet)
-        if isinstance(pack.data, dpkt.ip.IP):
-            return pack.data
+def pcap2ips(pcap):
+    parsers = {
+        dpkt.pcap.DLT_EN10MB:       dpkt.ethernet.Ethernet,
+        dpkt.pcap.DLT_LINUX_SLL2:   dpkt.sll2.SLL2,
+    }
+    parser = parsers.get( pcap.datalink() )
+    if parser is None:
+        raise NotImplementedError
+    res = []
+    for ts, packet in pcap:
+        ip = parser(packet).data
+        res.append(ip)
+    return res
 
 with open(argv[1],'rb') as f:
-    pcap = list(dpkt.pcap.UniversalReader(f))
-    pcap = [packet2ip(pkt) for ts,pkt in pcap]
-    pcap = [x for x in pcap if x]
+    pcap = dpkt.pcap.UniversalReader(f)
+    pcap = pcap2ips(pcap)
 
 mp = {}
 for ip in pcap:
