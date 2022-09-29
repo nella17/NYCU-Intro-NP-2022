@@ -79,8 +79,8 @@ signed main(int argc, char* argv[]) {
         for(int j = 0; j*8 < fsize; j++)
             xor ^= ary[j];
         _Bool checked = xor == checksum;
-        printf("%s: %d bytes %s\n",
-            file, fsize , checked ? "" : "(checksum failed)");
+        printf("%s: %d bytes %lx %s\n",
+            file, fsize, checksum, checked ? "" : "(checksum failed)");
         if (!checked) {
             /*
             printf("%lx\n%lx\n%lx\n", checksum, xor, checksum^xor);
