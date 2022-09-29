@@ -12,10 +12,11 @@
 
 const int MAX_SIZE = 1024;
 
-void fail(char* s, ...) {
-    if (errno) perror(s);
-    else printf(s);
-    exit(-1);
+void check_errno(char* s) {
+    if (errno) {
+        perror(s);
+        exit(-1);
+    }
 }
 
 char* readstr(int fd, int offset, int bytes) {
@@ -41,15 +42,19 @@ uint64_t readint(int fd, int offset, int bytes, _Bool little) {
 }
 
 signed main(int argc, char* argv[]) {
-    if (argc != 3) fail("Usage: %s <src.pak> <dst>\n", argv[0]);
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <src.pak> <dst>\n", argv[0]);
+        return -1;
+    }
     const char* src = argv[1];
     const char* dst = argv[2];
 
     int fd      = open(src, O_RDONLY);
-    if (fd < 0) fail("open src");
-    if (mkdir(dst, 0755) && errno != EEXIST) fail("mkdir fail");
+    check_errno("open src");
+    if (mkdir(dst, 0755) && errno != EEXIST)
+        check_errno("mkdir fail");
     int dirfd   = open(dst, O_DIRECTORY);
-    if (dirfd < 0) fail("open dst");
+    check_errno("open dst");
 
     lseek(fd, 4, SEEK_SET);
     uint32_t str_sec    = readint(fd, -1, 4, 1);
