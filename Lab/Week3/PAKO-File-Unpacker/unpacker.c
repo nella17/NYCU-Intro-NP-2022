@@ -51,8 +51,11 @@ signed main(int argc, char* argv[]) {
 
     int fd      = open(src, O_RDONLY);
     check_errno("open src");
-    if (mkdir(dst, 0755) && errno != EEXIST)
-        check_errno("mkdir fail");
+    if (mkdir(dst, 0755)) {
+        if (errno != EEXIST)
+            check_errno("mkdir fail");
+        errno = 0;
+    }
     int dirfd   = open(dst, O_DIRECTORY);
     check_errno("open dst");
 
