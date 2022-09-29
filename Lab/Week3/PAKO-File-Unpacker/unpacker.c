@@ -30,14 +30,14 @@ char* readstr(int fd, int offset, int bytes) {
 
 uint64_t readint(int fd, int offset, int bytes, _Bool little) {
     assert(bytes == 4 || bytes == 8);
-    char* str = readstr(fd, offset, bytes);
+    uint8_t* ary = (uint8_t*)readstr(fd, offset, bytes);
     uint64_t r = 0;
     if (little)
-        r = *(uint64_t*)str;
+        r = *(uint64_t*)ary;
     else
         for(int i = 0; i < bytes; i++)
-            r = r * 0x100 + (uint8_t)str[i];
-    free(str);
+            r = r * 0x100 + ary[i];
+    free(ary);
     return r;
 }
 
