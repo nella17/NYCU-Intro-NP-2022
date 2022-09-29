@@ -47,7 +47,22 @@ typedef struct {
     uint32_t filesize;
     int32_t  off_data;
     uint64_t checksum;
-} __attribute__((packed)) File;
+} __attribute__((packed)) File_Meta;
+
+typedef struct {
+    File_Meta meta;
+    char* filename;
+    char* content;
+} File;
+
+_Bool check_checksum(File* f) {
+    uint64_t* ary = (uint64_t*)f->content;
+    uint64_t xor = 0;
+    for(size_t j = 0; j*8 < f->meta.filesize; j++)
+        xor ^= ary[j];
+    _Bool checked = xor == f->meta.checksum;
+    return checked;
+}
 
 signed main(int argc, char* argv[]) {
     if (argc != 3) {
@@ -76,32 +91,33 @@ signed main(int argc, char* argv[]) {
 
     File files[ header.n_files ];
     for(size_t i = 0; i < header.n_files; i++) {
-        readstr((char*)&files[i], fd, -1, sizeof(File));
-        change_endian32(files[i].filesize);
-        change_endian64(files[i].checksum);
+        readstr((char*)&files[i].meta, fd, -1, sizeof(File_Meta));
+        change_endian32(files[i].meta.filesize);
+        change_endian64(files[i].meta.checksum);
     }
 
     for(size_t i = 0; i < header.n_files; i++) {
-        uint32_t fsize = files[i].filesize;
-        char* file  = readstr(NULL, fd, header.off_str + files[i].off_file, MAX_SIZE);
-        char* data  = readstr(NULL, fd, header.off_dat + files[i].off_data, fsize);
-        uint64_t* ary = (uint64_t*)data;
-        uint64_t xor = 0;
-        for(size_t j = 0; j*8 < fsize; j++)
-            xor ^= ary[j];
-        _Bool checked = xor == files[i].checksum;
-        printf("%s: %d bytes %lx %s\n",
-            file, fsize, files[i].checksum, checked ? "" : "(checksum failed)");
-        if (checked) {
-            int ffd = openat(dirfd, file, O_CREAT | O_WRONLY, 0644);
-            if (ffd < 0) perror("openat");
-            write(ffd, data, fsize);
-            close(ffd);
-        }
-        free(file);
-        free(data);
+        files[i].filename = readstr(NULL, fd, header.off_str + files[i].meta.off_file, MAX_SIZE);
+        files[i].content = readstr(NULL, fd, header.off_dat + files[i].meta.off_data, files[i].meta.filesize);
     }
 
+    for(size_t i = 0; i < header.n_files; i++) {
+        _Bool checked = check_checksum(&files[i]);
+        printf("%s: %d bytes %lx %s\n",
+            files[i].filename, files[i].meta.filesize, files[i].meta.checksum,
+            checked ? "" : "(checksum failed)");
+        if (checked) {
+            int ffd = openat(dirfd, files[i].filename, O_CREAT | O_WRONLY, 0644);
+            if (ffd < 0) perror("openat");
+            write(ffd, files[i].content, files[i].meta.filesize);
+            close(ffd);
+        }
+    }
+
+    for(size_t i = 0; i < header.n_files; i++) {
+        free(files[i].filename);
+        free(files[i].content);
+    }
     close(fd);
     close(dirfd);
 
