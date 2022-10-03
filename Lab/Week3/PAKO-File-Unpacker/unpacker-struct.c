@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
+#include <stdbool.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -17,11 +18,25 @@
 
 const uint32_t MAGIC = 0x4F4B4150;
 
-void check_errno(char* s) {
-    if (errno) {
+void fail(char* s) {
+    if (errno)
         perror(s);
-        exit(-1);
+    else
+        fprintf(stderr, "%s: Unknown error", s);
+    exit(-1);
+}
+
+bool is_dir(const char* path) {
+    struct stat st;
+    stat(path, &st);
+    if (errno) {
+        if (errno == ENOENT) {
+            errno = 0;
+            return false;
+        }
+        fail("is_dir");
     }
+    return S_ISDIR(st.st_mode);
 }
 
 char* readstr(char* str, int fd, int32_t offset, size_t bytes) {
@@ -64,7 +79,7 @@ typedef struct {
     char* content;
 } File;
 
-_Bool check_checksum(File* f) {
+bool check_checksum(File* f) {
     CheckSum* ary = (CheckSum*)f->content;
     CheckSum xor; xor.v64 = 0;
     size_t j = 0;
@@ -72,7 +87,7 @@ _Bool check_checksum(File* f) {
         xor.v64 ^= ary[j/8].v64;
     for(; j+1 <= f->meta.filesize; j++)
         xor.v8[j%8] ^= ary[j/8].v8[j%8];
-    _Bool checked = xor.v64 == f->meta.checksum.v64;
+    bool checked = xor.v64 == f->meta.checksum.v64;
     return checked;
 }
 
@@ -85,17 +100,14 @@ signed main(int argc, char* argv[]) {
     const char* dst = argv[2];
 
     int srcfd   = open(src, O_RDONLY);
-    check_errno("open src");
-    if (mkdir(dst, 0755)) {
-        if (errno != EEXIST)
-            check_errno("mkdir fail");
-        errno = 0;
-    }
+    if (srcfd < 0) fail("open src");
+    if (!is_dir(dst) && mkdir(dst, 0755) < 0)
+        fail("mkdir fail");
     int dstfd   = open(dst, O_DIRECTORY);
-    check_errno("open dst");
+    if (dstfd < 0) fail("open dst");
 
     off_t end_off = lseek(srcfd, 0, SEEK_END);
-    check_errno("error");
+    if (end_off < 0) fail("error");
     size_t filesize = (size_t)end_off;
     char* filestr = readstr(NULL, srcfd, 0, filesize);
 
@@ -123,7 +135,7 @@ signed main(int argc, char* argv[]) {
     }
 
     for(size_t i = 0; i < header.n_files; i++) {
-        _Bool checked = check_checksum(&files[i]);
+        bool checked = check_checksum(&files[i]);
         printf("%-*s %*d bytes 0x%016lx %s\n",
             (int)max_filename, files[i].filename,
             (int)log10(max_filesize)+1, files[i].meta.filesize,
@@ -132,9 +144,12 @@ signed main(int argc, char* argv[]) {
         );
         if (checked) {
             int ffd = openat(dstfd, files[i].filename, O_CREAT | O_WRONLY, 0644);
-            if (ffd < 0) perror("openat");
-            write(ffd, files[i].content, files[i].meta.filesize);
-            close(ffd);
+            if (ffd < 0) {
+                perror("openat");
+            } else {
+                write(ffd, files[i].content, files[i].meta.filesize);
+                close(ffd);
+            }
         }
     }
 
