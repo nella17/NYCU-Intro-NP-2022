@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 #include <sys/time.h>
 #include <sys/signal.h>
 #include <sys/types.h>
@@ -40,10 +41,18 @@ void setup() {
 const char HOST[] = "140.113.213.213";
 const int PORT = 10003;
 
-void run(int size, int time) {
+const int packet_size = 1460;
+const int header_size = 0x42;
+const int buf_size = packet_size - header_size;
+const int delay = 3e6;
+
+void run(double MBps) {
+    double time = packet_size / MBps;
+
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
         perror("sockfd"), exit(-1);
+    // setsockopt(sockfd, SOL_PACKET, SO_SNDBUF, &packet_size, sizeof(packet_size));
 
     struct sockaddr_in servaddr;
     bzero(&servaddr, sizeof(servaddr));
@@ -55,27 +64,28 @@ void run(int size, int time) {
     if (connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)
         perror("connect"), exit(-1);
 
-    /*
+    int flag = 0;
+    flag |= MSG_DONTWAIT;
     int on;
     if (ioctl(sockfd, FIONBIO, &on) < 0)
         perror("ioctl"), exit(-1);
-    //*/
 
-    void* buf = malloc(size);
+    void* buf = malloc(buf_size);
 	struct timeval tv0, tv1;
 	gettimeofday(&tv0, NULL);
 	for(u_int64_t r = 0; ; r++) {
         gettimeofday(&tv1, NULL);
         uint64_t d = (tv1.tv_sec-tv0.tv_sec) * (uint64_t)1e6 + (tv1.tv_usec - tv0.tv_usec);
-        if (d < r * time) {
-            struct timespec t = { 0, r * time - d };
+        uint64_t wait_time = r * time - d;
+        if (wait_time > 0) {
+            struct timespec t = { 0, wait_time };
             nanosleep(&t, NULL);
         }
-        float rate = r * time / 3e6;
+        double rate = (1+log2(MBps)) * r * time / delay;
         if (rate > 1) rate = 1;
-        int cursize = size * rate;
-        bytesent += cursize;
-        send(sockfd, buf, cursize, 0);
+        int cursize = buf_size * rate;
+        bytesent += cursize + header_size;
+        send(sockfd, buf, cursize, flag);
 	}
 }
 
@@ -87,12 +97,8 @@ signed main(int argc, char* argv[]) {
 
     setup();
 
-    float MBps = atof(argv[1]);
-    int tot = 1460;
-    int header = 0x42;
-    int size = tot - header;
-    int time = tot / MBps;
-    run(size, time);
+    double MBps = atof(argv[1]);
+    run(MBps);
 
     return 0;
 }
