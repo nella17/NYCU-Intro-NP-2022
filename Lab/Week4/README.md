@@ -30,9 +30,17 @@ The purpose of this lab is to implement a simple TCP client to send data at a co
 
 ## Procedure
 
+:::danger
+If you have difficulties connecting to the Internet, or the bandwidth in your network is unstable. You can download our sink server from here ([x86-64](http://inp111.zoolab.org/lab03.2/sink), [arm64](http://inp111.zoolab.org/lab03.2/arm64/sink)) and modify your client to connect to the local server instead of our Internet server.
+
+You have to enable the execute permission for the sink server and then run the server using the command ``./sink 10003``. You can check whether the server works correctly by running ``nc localhost 10003``.
+
+Note that if you run the sink server in your docker, you have to capture packets using ``tcpdump`` in your docker instead of Wireshark. The commands to run tcpdump is ``sudo tcpdump -ni lo tcp and dst port 10003 -w output.pcap``. You can then open your pcap file using Wireshark and use the **I/O graphs** feature in Wireshark.
+:::
+
 1. Play with the server manually using the command ``nc inp111.zoolab.org 10003``.
 
-1. The server is a sink server that drops everything you send to the server.
+2. The server is a sink server that drops everything you send to the server.
 
 1. Write a program to interact with the server. After receiving the first message from the server, your program should start sending data to the server until your program is terminated by the user.
 
