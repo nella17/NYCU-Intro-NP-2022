@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 
 static struct timeval _t0;
@@ -38,13 +39,13 @@ void setup() {
 }
 
 // const char HOST[] = "inp111.zoolab.org";
-const char HOST[] = "140.113.213.213";
+const char HOST[] = "127.0.0.1";
 const int PORT = 10003;
 
-const int packet_size = 1460;
+const int mss_size = 0x100;
+const int packet_size = mss_size - 8;
 const int header_size = 0x42;
 const int buf_size = packet_size - header_size;
-const int delay = 3e6;
 
 void run(double MBps) {
     double time = packet_size / MBps;
@@ -52,7 +53,12 @@ void run(double MBps) {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
         perror("sockfd"), exit(-1);
-    // setsockopt(sockfd, SOL_PACKET, SO_SNDBUF, &packet_size, sizeof(packet_size));
+    /*
+    if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &buf_size, sizeof(buf_size)))
+        perror("setsockopt sendbuf"), exit(-1);
+    //*/
+    if (setsockopt(sockfd, IPPROTO_TCP, TCP_MAXSEG, &mss_size, sizeof(mss_size)))
+        perror("setsockopt mss"), exit(-1);
 
     struct sockaddr_in servaddr;
     bzero(&servaddr, sizeof(servaddr));
@@ -81,8 +87,7 @@ void run(double MBps) {
             struct timespec t = { 0, wait_time };
             nanosleep(&t, NULL);
         }
-        double rate = (1+log2(MBps)) * r * time / delay;
-        if (rate > 1) rate = 1;
+        double rate = 1;
         int cursize = buf_size * rate;
         bytesent += cursize + header_size;
         send(sockfd, buf, cursize, flag);
