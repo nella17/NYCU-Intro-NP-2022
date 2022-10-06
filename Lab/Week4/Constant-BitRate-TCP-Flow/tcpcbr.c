@@ -55,22 +55,27 @@ void run(int size, int time) {
     if (connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)
         perror("connect"), exit(-1);
 
+    /*
     int on;
     if (ioctl(sockfd, FIONBIO, &on) < 0)
         perror("ioctl"), exit(-1);
+    //*/
 
     void* buf = malloc(size);
 	struct timeval tv0, tv1;
 	gettimeofday(&tv0, NULL);
-	for(u_int64_t r = 50; ; r++) {
+	for(u_int64_t r = 0; ; r++) {
         gettimeofday(&tv1, NULL);
         uint64_t d = (tv1.tv_sec-tv0.tv_sec) * (uint64_t)1e6 + (tv1.tv_usec - tv0.tv_usec);
         if (d < r * time) {
             struct timespec t = { 0, r * time - d };
             nanosleep(&t, NULL);
         }
-        bytesent += size;
-        send(sockfd, buf, size, MSG_DONTWAIT);
+        float rate = r * time / 3e6;
+        if (rate > 1) rate = 1;
+        int cursize = size * rate;
+        bytesent += cursize;
+        send(sockfd, buf, cursize, 0);
 	}
 }
 
