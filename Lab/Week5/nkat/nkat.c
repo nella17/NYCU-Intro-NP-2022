@@ -36,6 +36,10 @@ int main(int argc, char* argv[]) {
 	int listenfd = socket(AF_INET, SOCK_STREAM, 0);
     if (listenfd < 0) fail("listenfd");
 
+    int on = 1;
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof (on)) < 0)
+        fail("setsockopt(SO_REUSEPORT)");
+
 	struct sockaddr_in servaddr;
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family      = AF_INET;
