@@ -63,11 +63,14 @@ int main(int argc, char* argv[]) {
 
 		if ((fork()) == 0) {
 			close(listenfd);
+            int oldstderr = dup(2);
             dup2(connfd, 0);
             dup2(connfd, 1);
-            // int oldstderr = dup2(connfd, 2);
-            execvp(program, optargv);
-            if (errno) perror("exec");
+            dup2(connfd, 2);
+            if (execvp(program, optargv) < 0) {
+                dup2(oldstderr, 2);
+                perror("exec");
+            }
             close(connfd);
 			exit(0);
 		}
