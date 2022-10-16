@@ -67,13 +67,12 @@ int main(int argc, char* argv[]) {
             dup2(connfd, 0);
             dup2(connfd, 1);
             dup2(connfd, 2);
-            if (execvp(program, optargv) < 0) {
-                dup2(oldstderr, 2);
-                perror("exec");
-            }
             close(connfd);
-			exit(0);
+            execvp(program, optargv);
+            dup2(oldstderr, 2);
+            fail("exec");
 		}
+
 		close(connfd);
         char buf[16];
         printf("New connection from %s:%d\n",
