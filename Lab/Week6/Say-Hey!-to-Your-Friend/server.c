@@ -21,6 +21,8 @@
 #define MAX_FDS 2048
 #define MAX_LINE 1024
 
+const int SEND_FLAG = MSG_NOSIGNAL | MSG_DONTWAIT;
+
 void fail(const char* s) {
     if (errno) perror(s);
     else fprintf(stderr, "%s: unknown error", s);
@@ -33,8 +35,12 @@ void sendfmt(int fd, const char* fmt, ...) {
     char msg[MAX_LINE];
     int n = vsprintf(msg, fmt, args);
     va_end(args);
-    send(fd, msg, n, MSG_NOSIGNAL);
+    send(fd, msg, n, SEND_FLAG);
 }
+
+time_t rawtime;
+struct tm * ti;
+char timebuf[20];
 
 const char SYSTEM[] = "***";
 void sendstr(int fd, const char* from, const char* fmt, ...) {
@@ -44,20 +50,12 @@ void sendstr(int fd, const char* from, const char* fmt, ...) {
     vsprintf(msg, fmt, args);
     va_end(args);
 
-    time_t rawtime;
-    time (&rawtime);
-    struct tm * ti = localtime (&rawtime);
-
     char frombuf[MAX_LINE/2];
     sprintf(frombuf, from != SYSTEM ? "<%s>" : "%s", from);
 
     char buf[MAX_LINE*2];
-    int n = sprintf(buf, "%4d-%02d-%02d %02d:%02d:%02d %s %s\n",
-        ti->tm_year + 1900, ti->tm_mon+1, ti->tm_mday,
-        ti->tm_hour, ti->tm_min, ti->tm_sec,
-        frombuf, msg
-    );
-    send(fd, buf, n, MSG_NOSIGNAL);
+    int n = sprintf(buf, "%s %s %s\n", timebuf, frombuf, msg);
+    send(fd, buf, n, SEND_FLAG);
 }
 
 char* sock_info(const struct sockaddr_in* sock) {
@@ -80,15 +78,17 @@ int clicnt = 0;
 struct Client cliinfo[MAX_FDS] = {};
 
 void sendexp(int skip, const char* from, const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    char msg[MAX_LINE];
-    vsprintf(msg, fmt, args);
-    va_end(args);
-
-    for(int i = 0; i < MAX_FDS; i++)
-        if (cliinfo[i].name && i != skip)
-            sendstr(i, from, msg);
+    if (fork() == 0) {
+        va_list args;
+        va_start(args, fmt);
+        char msg[MAX_LINE];
+        vsprintf(msg, fmt, args);
+        va_end(args);
+        for(int i = 0; i < MAX_FDS; i++)
+            if (cliinfo[i].name && i != skip)
+                sendstr(i, from, msg);
+        exit(0);
+    }
 }
 
 int main(int argc, char* argv[]) {
@@ -98,18 +98,15 @@ int main(int argc, char* argv[]) {
     }
 
     srand(time(0));
+    signal(SIGCHLD, SIG_IGN);
     signal(SIGPIPE, SIG_IGN);
 
     int listenport = atoi(argv[1]);
-    char* program = argv[2];
-    char** optargv = argv+2;
-
 	int listenfd = socket(AF_INET, SOCK_STREAM, 0);
     if (listenfd < 0) fail("listenfd");
 
     int on = 1;
-    if ((on = 1) && setsockopt(listenfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof (on)) < 0)
-        fail("setsockopt(SO_REUSEPORT)");
+    if ((on = 1) && setsockopt(listenfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof (on)) < 0) fail("setsockopt(SO_REUSEPORT)");
 
 	struct sockaddr_in servaddr;
 	bzero(&servaddr, sizeof(servaddr));
@@ -139,6 +136,12 @@ int main(int argc, char* argv[]) {
 		int nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
 		if (nfds == -1)
             fail("epoll_wait");
+        time (&rawtime);
+        ti = localtime (&rawtime);
+        sprintf(timebuf, "%4d-%02d-%02d %02d:%02d:%02d",
+            ti->tm_year + 1900, ti->tm_mon+1, ti->tm_mday,
+            ti->tm_hour, ti->tm_min, ti->tm_sec
+        );
 		for (int i = 0; i < nfds; ++i) {
 			if (events[i].data.fd == listenfd) {
                 struct sockaddr_in cliaddr;
@@ -182,6 +185,9 @@ int main(int argc, char* argv[]) {
                 } else {
                     if (buf[0] == '/') {
                         char* token = strtok(buf, " \n");
+                        if (!strcmp(token, "/exit")) {
+                            exit(0);
+                        } else
                         if (!strcmp(token, "/name") && n > 6) {
                             char* name = strdup(strtok(buf+6, "\n"));
                             sendstr(connfd, SYSTEM, "Nickname changed to <%s>", name);
@@ -190,12 +196,15 @@ int main(int argc, char* argv[]) {
                             cliinfo[connfd].name = name;
                         } else
                         if (!strcmp(token, "/who")) {
-                            sendfmt(connfd, "--------------------------------------------------\n");
-                            for(int i = 0; i < MAX_FDS; i++) if (cliinfo[i].name)
-                                sendfmt(connfd, "%c %30s %s\n",
-                                    " *"[i == connfd], cliinfo[i].name, cliinfo[i].info
-                                );
-                            sendfmt(connfd, "--------------------------------------------------\n");
+                            if (fork() == 0) {
+                                sendfmt(connfd, "--------------------------------------------------\n");
+                                for(int i = 0; i < MAX_FDS; i++) if (cliinfo[i].name)
+                                    sendfmt(connfd, "%c %30s %s\n",
+                                        " *"[i == connfd], cliinfo[i].name, cliinfo[i].info
+                                    );
+                                sendfmt(connfd, "--------------------------------------------------\n");
+                                exit(0);
+                            }
                         } else
                         {
                             sendstr(connfd, SYSTEM, "Unknown or incomplete command <%s>", token);
