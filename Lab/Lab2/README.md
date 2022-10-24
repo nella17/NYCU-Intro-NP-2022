@@ -1,4 +1,4 @@
-# INP111 Lab02 Week #3
+# INP111 Lab02 Week #3 (2022-09-29)
 
 Date: 2022-09-29
 
@@ -6,7 +6,7 @@ Date: 2022-09-29
 
 # #1 PAKO File Unpacker
 
-The purpose of this lab is to practice binary file reading and handle binary data in data structure.
+This lab aims to practice binary file reading and handle binary data in data structure.
 
 ## Structure of PAKO file
 * A PAKO file contains four sections: header section, file entries, string section, and content section.
@@ -30,7 +30,7 @@ The purpose of this lab is to practice binary file reading and handle binary dat
    *  Consider each segment as an ``uint64_t`` integer. The checksum is the **XOR** value of all segments.
 
 ## Sample PAKO File
-* The sample file can be downloaded from [example.pak](http://inp111.zoolab.org/lab02.1/example.pak).
+* The sample file can be downloaded from [example.pak](https://inp111.zoolab.org/lab02.1/example.pak).
 * There are three files packed in the sample PAKO file. The filenames are:
     * ``f1.txt``
     * ``f2``
@@ -49,11 +49,13 @@ The purpose of this lab is to practice binary file reading and handle binary dat
         * `[0x2c, 0x30)`: `0x00000020` is the offset of ``f2``'s content in the content section. The content of the file is located at offset `0x60+0x20=0x80`. (start with `66320a0a6632636f`......)
         * `[0x30, 0x38)`: `0x232c7d730f070a44` is the checksum of the file. `checksum = 0x6f6332660a0a3266 ^ 0x2e2e2e746e65746e ^ 0x62616161610a2e2e ^ 0x0a626262`. If the length of the last segment is less than 8 bytes, pad zeros at the end of the segment to ensure its length is correct.
     * `[0x53, 0x55]`: filename string of the second file.
-    * `[0x80, 0x8c]`: file content of the second file.
+    * `[0x80, 0x9c)`: file content of the second file.
 
 ## Steps
+
 1. Implement an unpacker program in C/C++ to unpack the PAKO file. You should invoke your program using the following command: `./unpacker <src.pak> <dst>`, where `src.pak` is the input PAKO file and `dst` is the destination directory. You should unpack the files packed in the PAKO file to `dst` directory. When your program unpacks the files, it must calculate the checksum of each file. **Do not unpack the files having incorrect checksums.**
-2. You can test your program with [example.pak](http://inp111.zoolab.org/lab02.1/example.pak)
+
+1. Please test your program with [example.pak](https://inp111.zoolab.org/lab02.1/example.pak)
     * Note that the checksum of `f3.txt` in this example is incorrect. Therefore, your program should not unpack `f3.txt`.
 
 :::warning
@@ -83,12 +85,12 @@ typedef struct {
 
 ## Demo
 <!---
-1. Download the test case from [here](http://inp111.zoolab.org/lab02.1/testcase.pak).
+1. Download the test case from [here](https://inp111.zoolab.org/lab02.1/testcase.pak).
 --->
 1. Use the following command to test your program.
     ```
-    wget http://inp111.zoolab.org/lab02.1/testcase0.pak
-    wget http://inp111.zoolab.org/lab02.1/testcase.pak
+    wget https://inp111.zoolab.org/lab02.1/testcase0.pak
+    wget https://inp111.zoolab.org/lab02.1/testcase.pak
     mkdir /tmp/inplab2test
     ./unpacker testcase.pak /tmp/inplab2test
     cd /tmp/inplab2test
@@ -96,8 +98,11 @@ typedef struct {
     ./checker
     ```
 ### Checkpoints
-1. [20%] Your program shows the number of files packed in [`testcase0.pak`](http://inp111.zoolab.org/lab02.1/testcase0.pak).
-4. [30%] Your program shows the information (filename, file size in bytes) of each file packed in [`testcase0.pak`](http://inp111.zoolab.org/lab02.1/testcase0.pak).
-5. [20%] The extracted `checker` script can unpack [`testcase.pak`](http://inp111.zoolab.org/lab02.1/testcase.pak) without a crash.
-6. [30%] `checker` unpack [`testcase.pak`](http://inp111.zoolab.org/lab02.1/testcase.pak) without a crash and shows `Bingo` message successfully.
+1. [20%] Your program shows the number of files packed in [`testcase0.pak`](https://inp111.zoolab.org/lab02.1/testcase0.pak).
+4. [30%] Your program shows the information (filename, file size in bytes) of each file packed in [`testcase0.pak`](https://inp111.zoolab.org/lab02.1/testcase0.pak).
+5. [20%] The `checker` program extracted from [`testcase.pak`](https://inp111.zoolab.org/lab02.1/testcase.pak) can run without a crash.
+6. [30%] The `checker` program extracted from [`testcase.pak`](https://inp111.zoolab.org/lab02.1/testcase.pak) can run and show the `Bingo` message successfully.
 
+:::warning
+It would be better to remove all files in the output directory before you run your unpacking program. Once unpacked, you must run the `checker` program inside the output directory.
+:::

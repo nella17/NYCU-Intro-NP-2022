@@ -1,4 +1,4 @@
-# INP111 Lab03 Week #4
+# INP111 Lab03 Week #4 (2022-10-06)
 
 Date: 2022-10-06
 
@@ -6,9 +6,9 @@ Date: 2022-10-06
 
 # #1 How Many Data Bytes are Received?
 
-The purpose of this lab is to implement a simple TCP client to interact with a remote server.
+This lab aims to implement a simple TCP client to interact with a remote server.
 
-## Procedure
+## Description
 
 1. Play with the server manually using the command ``nc inp111.zoolab.org 10002``.
 
@@ -26,12 +26,12 @@ The purpose of this lab is to implement a simple TCP client to interact with a r
 
 # #2 Constant BitRate TCP Flow
 
-The purpose of this lab is to implement a simple TCP client to send data at a constant bitrate.
+This lab aims to implement a simple TCP client to send data at a constant bitrate.
 
-## Procedure
+## Description
 
 :::danger
-If you have difficulties connecting to the Internet, or the bandwidth in your network is unstable. You can download our sink server from here ([x86-64](http://inp111.zoolab.org/lab03.2/sink), [arm64](http://inp111.zoolab.org/lab03.2/arm64/sink)) and modify your client to connect to the local server instead of our Internet server.
+If you have difficulties connecting to the Internet, or the bandwidth in your network is unstable. You can download our ***Linux*** sink server from here ([x86-64](https://inp111.zoolab.org/lab03.2/sink), [arm64](https://inp111.zoolab.org/lab03.2/arm64/sink)) and modify your client to connect to the local server instead of our Internet server. In case you want to compile and run your program on Mac directly, you may download our ***native Mac sink server*** from here ([x86-64](https://inp111.zoolab.org/lab03.2/mac.x86-64/sink), [arm64](https://inp111.zoolab.org/lab03.2/mac.arm64/sink)).
 
 You have to enable the execute permission for the sink server and then run the server using the command ``./sink 10003``. You can check whether the server works correctly by running ``nc localhost 10003``.
 
@@ -90,4 +90,3 @@ You must print out the data sending rate of your implementation. However, the gr
 :::info
 ***Hint***: Wireshark measures bitrate based on the entire packets captured on the wire. Therefore, you have to estimate how many header bytes are added to each packet to ensure that your program can send at a precise bitrate. 
 :::
-

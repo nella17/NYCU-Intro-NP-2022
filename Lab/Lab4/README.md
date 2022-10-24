@@ -1,4 +1,4 @@
-# INP111 Lab04 Week #5
+# INP111 Lab04 Week #5 (2022-10-13)
 
 Date: 2022-10-13
 
@@ -57,4 +57,3 @@ Suppose your program is named `nkat`. We will run your program listening on the 
 <!--1. [XXX%] Download a sample program [XXX]() from here, and then run the server using the command ``./nkat 11111 /path/to/XXX``. Your server should handle multiple concurrent clients appropriately.
 
 1. [XXX%] Download a sample program [XXX]() from here, and then run the server using the command ``./nkat 11111 timeout 5 /path/to/XXX``. Your server should handle command line arguments appropriately.-->
-

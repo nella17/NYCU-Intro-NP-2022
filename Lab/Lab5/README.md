@@ -142,7 +142,6 @@ nc localhost 10005    # for the second client
 
 1. [10%] A correct error message is displayed for unknown or incomplete commands.
 
-1. [10%] Your server can handle 1000 concurrent users online. You can use the command to test this case:<br/>``bash -c 'MAX=1000; I=0; while [ "$I" -lt "$MAX" ]; do I=$((I+1)); (timeout 30 nc localhost 10005 >/dev/null 2>&1 &) done'``<br/>The command emulates 1000 concurrent clients connecting to your server, and each client leaves the server after 30 seconds. In the meantime, you can have two additional clients connect to the server to ensure that your server works properly.
+1. [10%] Your server can handle 1000 concurrent users online. You can use the command to test this case:<br/>``bash -c 'MAX=1000; I=0; while [ "$I" -lt "$MAX" ]; do I=$((I+1)); (timeout 30 nc -d localhost 10005 >/dev/null 2>&1 &) done'``<br/>The command emulates 1000 concurrent clients connecting to your server, and each client leaves the server after 30 seconds. In the meantime, you can have two additional clients connect to the server to ensure that your server works properly.
 
 1. [10%] After all the 1000 users are disconnected from your server, repeat the last experiments again to see if your server can handle another 1000 concurrent users online. ***You have to use the same server instance in the previous test case. You cannot restart your server for this test case.***
-
