@@ -79,7 +79,7 @@ void sendexp(int skip, const char* from, const char* fmt, ...) {
         char msg[MAX_LINE];
         vsprintf(msg, fmt, args);
         va_end(args);
-        char* log = msg2log(from, msg);
+        char* log = msg2log(from, "%s", msg);
         for(int i = 0; i < MAX_FDS; i++)
             if (cliinfo[i].name && i != skip)
                 sendstr(i, log);
