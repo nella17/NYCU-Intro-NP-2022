@@ -59,8 +59,8 @@ void sendstr(int fd, const char* from, const char* fmt, ...) {
 }
 
 char* sock_info(const struct sockaddr_in* sock) {
-    char buf[64];
-    sprintf(buf, "%s:%d", inet_ntop(AF_INET, &sock->sin_addr, buf, 16), ntohs(sock->sin_port));
+    char buf[64], host[16];
+    sprintf(buf, "%s:%d", inet_ntop(AF_INET, &sock->sin_addr, host, 16), ntohs(sock->sin_port));
     return strdup(buf);
 }
 char* randstr() {
