@@ -29,12 +29,16 @@ void fail(const char* s) {
     exit(-1);
 }
 
+ssize_t sendstr(int fd, const char* buf) {
+    return send(fd, buf, strlen(buf), SEND_FLAG);
+}
+
 time_t rawtime;
 struct tm * ti;
 char timebuf[20];
 
 const char SYSTEM[] = "***";
-void sendstr(int fd, const char* from, const char* fmt, ...) {
+char* msg2log(const char* from, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
     char msg[MAX_LINE];
@@ -45,8 +49,8 @@ void sendstr(int fd, const char* from, const char* fmt, ...) {
     sprintf(frombuf, from != SYSTEM ? "<%s>" : "%s", from);
 
     char buf[MAX_LINE*2];
-    int n = sprintf(buf, "%s %s %s\n", timebuf, frombuf, msg);
-    send(fd, buf, n, SEND_FLAG);
+    sprintf(buf, "%s %s %s\n", timebuf, frombuf, msg);
+    return strdup(buf);
 }
 
 char* sock_info(const struct sockaddr_in* sock) {
@@ -75,9 +79,11 @@ void sendexp(int skip, const char* from, const char* fmt, ...) {
         char msg[MAX_LINE];
         vsprintf(msg, fmt, args);
         va_end(args);
+        char* log = msg2log(from, msg);
         for(int i = 0; i < MAX_FDS; i++)
             if (cliinfo[i].name && i != skip)
-                sendstr(i, from, msg);
+                sendstr(i, log);
+        free(log);
         exit(0);
     }
 }
@@ -152,8 +158,9 @@ int main(int argc, char* argv[]) {
                 sendexp(connfd, SYSTEM, "User <%s> has just landed on the server", name);
                 cliinfo[connfd].info = info;
                 cliinfo[connfd].name = name;
-                sendstr(connfd, SYSTEM, "Welcome to the simple CHAT server");
-                sendstr(connfd, SYSTEM, "Total %d users online now. Your name is <%s>", clicnt, name);
+                char* msg = msg2log(SYSTEM, "Welcome to the simple CHAT server\nTotal %d users online now. Your name is <%s>", clicnt, name);
+                sendstr(connfd, msg);
+                free(msg);
 				if (epoll_ctl(epollfd, EPOLL_CTL_ADD, connfd, &ev) == -1)
                     fail("epoll_ctl: connfd");
 			} else {
@@ -181,7 +188,9 @@ int main(int argc, char* argv[]) {
                         } else
                         if (!strcmp(token, "/name") && n > 6) {
                             char* name = strdup(strtok(buf+6, "\n"));
-                            sendstr(connfd, SYSTEM, "Nickname changed to <%s>", name);
+                            char* msg = msg2log(SYSTEM, "Nickname changed to <%s>", name);
+                            sendstr(connfd, msg);
+                            free(msg);
                             sendexp(connfd, SYSTEM, "User <%s> renamed to <%s>", cliinfo[connfd].name, name);
                             free(cliinfo[connfd].name);
                             cliinfo[connfd].name = name;
@@ -209,7 +218,9 @@ int main(int argc, char* argv[]) {
                             }
                         } else
                         {
-                            sendstr(connfd, SYSTEM, "Unknown or incomplete command <%s>", token);
+                            char* msg = msg2log(SYSTEM, "Unknown or incomplete command <%s>", token);
+                            sendstr(connfd, msg);
+                            free(msg);
                         }
                     } else {
                         char* token = strtok(buf, "\n");
