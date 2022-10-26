@@ -33,8 +33,6 @@ ssize_t sendstr(int fd, const char* buf) {
     return send(fd, buf, strlen(buf), SEND_FLAG);
 }
 
-time_t rawtime;
-struct tm * ti;
 char timebuf[20];
 
 const char SYSTEM[] = "***";
@@ -88,6 +86,94 @@ void sendexp(int skip, const char* from, const char* fmt, ...) {
     }
 }
 
+int handle_new_client(int listenfd) {
+    struct sockaddr_in cliaddr;
+    socklen_t clilen = sizeof(cliaddr);
+    int connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen);
+    if (connfd == -1)
+        fail("accept");
+    int on = 1;
+    if ((on = 1) && ioctl(connfd, FIONBIO, &on) < 0)
+        fail("ioctl: FIONBIO connfd");
+    clicnt++;
+    char* name = randstr();
+    char* info = sock_info(&cliaddr);
+    printf("* client connected from %s\n", info);
+    sendexp(connfd, SYSTEM, "User <%s> has just landed on the server", name);
+    cliinfo[connfd].info = info;
+    cliinfo[connfd].name = name;
+    char* msg = msg2log(SYSTEM, "Welcome to the simple CHAT server\nTotal %d users online now. Your name is <%s>", clicnt, name);
+    sendstr(connfd, msg);
+    free(msg);
+    return connfd;
+}
+
+int handle_client_input(int connfd) {
+    char buf[MAX_LINE];
+    bzero(buf, sizeof(buf));
+    int n = read(connfd, buf, MAX_LINE);
+    if (n <= 0) {
+        close(connfd);
+        clicnt--;
+        char* info = cliinfo[connfd].info;
+        char* name = cliinfo[connfd].name;
+        cliinfo.erase(connfd);
+        printf("* client %s disconnected\n", info);
+        sendexp(connfd, SYSTEM, "User <%s> has left the server", name);
+        free(info);
+        free(name);
+    } else {
+        if (buf[0] == '/') {
+            char* token = strtok(buf, " \n");
+            if (!strcmp(token, "/exit")) {
+                exit(0);
+            } else
+            if (!strcmp(token, "/name") && n > 7) {
+                char* name = strdup(strtok(buf+6, "\n"));
+                char* msg = msg2log(SYSTEM, "Nickname changed to <%s>", name);
+                sendstr(connfd, msg);
+                free(msg);
+                sendexp(connfd, SYSTEM, "User <%s> renamed to <%s>", cliinfo[connfd].name, name);
+                free(cliinfo[connfd].name);
+                cliinfo[connfd].name = name;
+            } else
+            if (!strcmp(token, "/who")) {
+                if (fork() == 0) {
+                    int mxname = 0; // 123.123.123.123:65535 -> 21 char
+                    for(auto [fd,cli]: cliinfo) {
+                        int len = strlen(cli.name);
+                        if (len > mxname) mxname = len;
+                    }
+                    int len = 2 + mxname + 22 + 1;
+                    int size = len * (clicnt+2);
+                    char* table = (char*)malloc(size);
+                    memset(table, '-', len);
+                    table[len-1] = '\n';
+                    int k = 0;
+                    for(auto [fd,cli]: cliinfo)
+                        sprintf(table + len * ++k, "%c %-*s %21s\n",
+                            " *"[fd == connfd], mxname, cli.name, cli.info
+                        );
+                    memset(table + size - len, '-', len);
+                    table[size-1] = '\n';
+                    send(connfd, table, size, SEND_FLAG);
+                    exit(0);
+                }
+            } else
+            {
+                char* msg = msg2log(SYSTEM, "Unknown or incomplete command <%s>", token);
+                sendstr(connfd, msg);
+                free(msg);
+            }
+        } else {
+            char* token = strtok(buf, "\n");
+            if (token)
+                sendexp(connfd, cliinfo[connfd].name, "%s", token);
+        }
+    }
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         fprintf(stderr, "%s <port-numner>\n", argv[0]);
@@ -128,105 +214,34 @@ int main(int argc, char* argv[]) {
 	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, listenfd, &ev) < 0)
 		fail("epoll_ctl: listenfd");
 
-    char buf[MAX_LINE];
 	for (;;) {
 		int nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
 		if (nfds == -1)
             fail("epoll_wait");
+
+        time_t rawtime;
+        struct tm * ti;
         time (&rawtime);
         ti = localtime (&rawtime);
         sprintf(timebuf, "%4d-%02d-%02d %02d:%02d:%02d",
             ti->tm_year + 1900, ti->tm_mon+1, ti->tm_mday,
             ti->tm_hour, ti->tm_min, ti->tm_sec
         );
+
 		for (int i = 0; i < nfds; ++i) {
 			if (events[i].data.fd == listenfd) {
-                struct sockaddr_in cliaddr;
-                socklen_t clilen = sizeof(cliaddr);
-				int connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen);
-				if (connfd == -1)
-					fail("accept");
-                if ((on = 1) && ioctl(connfd, FIONBIO, &on) < 0)
-                    fail("ioctl: FIONBIO connfd");
-                clicnt++;
+                int connfd = handle_new_client(listenfd);
                 bzero(&ev, sizeof(ev));
-				ev.events = EPOLLIN | EPOLLET;
-				ev.data.fd = connfd;
-                char* name = randstr();
-                char* info = sock_info(&cliaddr);
-                printf("* client connected from %s\n", info);
-                sendexp(connfd, SYSTEM, "User <%s> has just landed on the server", name);
-                cliinfo[connfd].info = info;
-                cliinfo[connfd].name = name;
-                char* msg = msg2log(SYSTEM, "Welcome to the simple CHAT server\nTotal %d users online now. Your name is <%s>", clicnt, name);
-                sendstr(connfd, msg);
-                free(msg);
-				if (epoll_ctl(epollfd, EPOLL_CTL_ADD, connfd, &ev) == -1)
+                ev.events = EPOLLIN | EPOLLET;
+                ev.data.fd = connfd;
+                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, connfd, &ev) == -1)
                     fail("epoll_ctl: connfd");
 			} else {
 				int connfd = events[i].data.fd;
-                bzero(buf, sizeof(buf));
-                int n = read(connfd, buf, MAX_LINE);
-                if (n <= 0) {
+                int stat = handle_client_input(connfd);
+                if (stat == -1) {
                     if (epoll_ctl(epollfd, EPOLL_CTL_DEL, connfd, &events[i]) == -1)
                         fail("epoll_ctl: connfd");
-                    close(connfd);
-                    clicnt--;
-                    char* info = cliinfo[connfd].info;
-                    char* name = cliinfo[connfd].name;
-                    cliinfo.erase(connfd);
-                    printf("* client %s disconnected\n", info);
-                    sendexp(connfd, SYSTEM, "User <%s> has left the server", name);
-                    free(info);
-                    free(name);
-                } else {
-                    if (buf[0] == '/') {
-                        char* token = strtok(buf, " \n");
-                        if (!strcmp(token, "/exit")) {
-                            exit(0);
-                        } else
-                        if (!strcmp(token, "/name") && n > 7) {
-                            char* name = strdup(strtok(buf+6, "\n"));
-                            char* msg = msg2log(SYSTEM, "Nickname changed to <%s>", name);
-                            sendstr(connfd, msg);
-                            free(msg);
-                            sendexp(connfd, SYSTEM, "User <%s> renamed to <%s>", cliinfo[connfd].name, name);
-                            free(cliinfo[connfd].name);
-                            cliinfo[connfd].name = name;
-                        } else
-                        if (!strcmp(token, "/who")) {
-                            if (fork() == 0) {
-                                int mxname = 0; // 123.123.123.123:65535 -> 21 char
-                                for(auto [fd,cli]: cliinfo) {
-                                    int len = strlen(cli.name);
-                                    if (len > mxname) mxname = len;
-                                }
-                                int len = 2 + mxname + 22 + 1;
-                                int size = len * (clicnt+2);
-                                char* table = (char*)malloc(size);
-                                memset(table, '-', len);
-                                table[len-1] = '\n';
-                                int k = 0;
-                                for(auto [fd,cli]: cliinfo)
-                                    sprintf(table + len * ++k, "%c %-*s %21s\n",
-                                        " *"[fd == connfd], mxname, cli.name, cli.info
-                                    );
-                                memset(table + size - len, '-', len);
-                                table[size-1] = '\n';
-                                send(connfd, table, size, SEND_FLAG);
-                                exit(0);
-                            }
-                        } else
-                        {
-                            char* msg = msg2log(SYSTEM, "Unknown or incomplete command <%s>", token);
-                            sendstr(connfd, msg);
-                            free(msg);
-                        }
-                    } else {
-                        char* token = strtok(buf, "\n");
-                        if (token)
-                            sendexp(connfd, cliinfo[connfd].name, "%s", token);
-                    }
                 }
 			}
 		}
