@@ -29,15 +29,6 @@ void fail(const char* s) {
     exit(-1);
 }
 
-void sendfmt(int fd, const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    char msg[MAX_LINE];
-    int n = vsprintf(msg, fmt, args);
-    va_end(args);
-    send(fd, msg, n, SEND_FLAG);
-}
-
 time_t rawtime;
 struct tm * ti;
 char timebuf[20];
@@ -197,12 +188,23 @@ int main(int argc, char* argv[]) {
                         } else
                         if (!strcmp(token, "/who")) {
                             if (fork() == 0) {
-                                sendfmt(connfd, "--------------------------------------------------\n");
-                                for(int i = 0; i < MAX_FDS; i++) if (cliinfo[i].name)
-                                    sendfmt(connfd, "%c %30s %s\n",
-                                        " *"[i == connfd], cliinfo[i].name, cliinfo[i].info
+                                int mxname = 0; // 123.123.123.123:65535 -> 21 char
+                                for(int i = 0; i < MAX_FDS; i++) if (cliinfo[i].name) {
+                                    int len = strlen(cliinfo[i].name);
+                                    if (len > mxname) mxname = len;
+                                }
+                                int len = 2 + mxname + 22 + 1;
+                                int size = len * (clicnt+2);
+                                char* buf = malloc(size);
+                                memset(buf, '-', len);
+                                buf[len-1] = '\n';
+                                for(int i = 0, j = 1; i < MAX_FDS; i++) if (cliinfo[i].name)
+                                    sprintf(buf + len * j++, "%c %-*s %21s\n",
+                                        " *"[i == connfd], mxname, cliinfo[i].name, cliinfo[i].info
                                     );
-                                sendfmt(connfd, "--------------------------------------------------\n");
+                                memset(buf + size - len, '-', len);
+                                buf[size-1] = '\n';
+                                send(connfd, buf, size, SEND_FLAG);
                                 exit(0);
                             }
                         } else
