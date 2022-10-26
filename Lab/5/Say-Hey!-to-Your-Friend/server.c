@@ -186,7 +186,7 @@ int main(int argc, char* argv[]) {
                         if (!strcmp(token, "/exit")) {
                             exit(0);
                         } else
-                        if (!strcmp(token, "/name") && n > 6) {
+                        if (!strcmp(token, "/name") && n > 7) {
                             char* name = strdup(strtok(buf+6, "\n"));
                             char* msg = msg2log(SYSTEM, "Nickname changed to <%s>", name);
                             sendstr(connfd, msg);
