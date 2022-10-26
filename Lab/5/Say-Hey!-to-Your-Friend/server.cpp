@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <time.h>
 #include <math.h>
+#include <unordered_map>
 #include <sys/time.h>
 #include <sys/signal.h>
 #include <sys/types.h>
@@ -18,7 +19,6 @@
 #include <arpa/inet.h>
 
 #define MAX_EVENTS 1024
-#define MAX_FDS 2048
 #define MAX_LINE 1024
 
 const int SEND_FLAG = MSG_NOSIGNAL | MSG_DONTWAIT;
@@ -70,7 +70,7 @@ struct Client {
 };
 
 int clicnt = 0;
-struct Client cliinfo[MAX_FDS] = {};
+std::unordered_map<int, struct Client> cliinfo{};
 
 void sendexp(int skip, const char* from, const char* fmt, ...) {
     if (fork() == 0) {
@@ -80,9 +80,9 @@ void sendexp(int skip, const char* from, const char* fmt, ...) {
         vsprintf(msg, fmt, args);
         va_end(args);
         char* log = msg2log(from, "%s", msg);
-        for(int i = 0; i < MAX_FDS; i++)
-            if (cliinfo[i].name && i != skip)
-                sendstr(i, log);
+        for(auto [fd, cli]: cliinfo)
+            if (fd != skip)
+                sendstr(fd, log);
         free(log);
         exit(0);
     }
@@ -174,8 +174,7 @@ int main(int argc, char* argv[]) {
                     clicnt--;
                     char* info = cliinfo[connfd].info;
                     char* name = cliinfo[connfd].name;
-                    cliinfo[connfd].info = NULL;
-                    cliinfo[connfd].name = NULL;
+                    cliinfo.erase(connfd);
                     printf("* client %s disconnected\n", info);
                     sendexp(connfd, SYSTEM, "User <%s> has left the server", name);
                     free(info);
@@ -198,18 +197,19 @@ int main(int argc, char* argv[]) {
                         if (!strcmp(token, "/who")) {
                             if (fork() == 0) {
                                 int mxname = 0; // 123.123.123.123:65535 -> 21 char
-                                for(int j = 0; j < MAX_FDS; j++) if (cliinfo[j].name) {
-                                    int len = strlen(cliinfo[j].name);
+                                for(auto [fd,cli]: cliinfo) {
+                                    int len = strlen(cli.name);
                                     if (len > mxname) mxname = len;
                                 }
                                 int len = 2 + mxname + 22 + 1;
                                 int size = len * (clicnt+2);
-                                char* table = malloc(size);
+                                char* table = (char*)malloc(size);
                                 memset(table, '-', len);
                                 table[len-1] = '\n';
-                                for(int j = 0, k = 1; j < MAX_FDS; j++) if (cliinfo[j].name)
-                                    sprintf(table + len * k++, "%c %-*s %21s\n",
-                                        " *"[j == connfd], mxname, cliinfo[j].name, cliinfo[j].info
+                                int k = 0;
+                                for(auto [fd,cli]: cliinfo)
+                                    sprintf(table + len * ++k, "%c %-*s %21s\n",
+                                        " *"[fd == connfd], mxname, cli.name, cli.info
                                     );
                                 memset(table + size - len, '-', len);
                                 table[size-1] = '\n';
