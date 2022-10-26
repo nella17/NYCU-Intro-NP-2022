@@ -198,22 +198,22 @@ int main(int argc, char* argv[]) {
                         if (!strcmp(token, "/who")) {
                             if (fork() == 0) {
                                 int mxname = 0; // 123.123.123.123:65535 -> 21 char
-                                for(int i = 0; i < MAX_FDS; i++) if (cliinfo[i].name) {
-                                    int len = strlen(cliinfo[i].name);
+                                for(int j = 0; j < MAX_FDS; j++) if (cliinfo[j].name) {
+                                    int len = strlen(cliinfo[j].name);
                                     if (len > mxname) mxname = len;
                                 }
                                 int len = 2 + mxname + 22 + 1;
                                 int size = len * (clicnt+2);
-                                char* buf = malloc(size);
-                                memset(buf, '-', len);
-                                buf[len-1] = '\n';
-                                for(int i = 0, j = 1; i < MAX_FDS; i++) if (cliinfo[i].name)
-                                    sprintf(buf + len * j++, "%c %-*s %21s\n",
-                                        " *"[i == connfd], mxname, cliinfo[i].name, cliinfo[i].info
+                                char* table = malloc(size);
+                                memset(table, '-', len);
+                                table[len-1] = '\n';
+                                for(int j = 0, k = 1; j < MAX_FDS; j++) if (cliinfo[j].name)
+                                    sprintf(table + len * k++, "%c %-*s %21s\n",
+                                        " *"[j == connfd], mxname, cliinfo[j].name, cliinfo[j].info
                                     );
-                                memset(buf + size - len, '-', len);
-                                buf[size-1] = '\n';
-                                send(connfd, buf, size, SEND_FLAG);
+                                memset(table + size - len, '-', len);
+                                table[size-1] = '\n';
+                                send(connfd, table, size, SEND_FLAG);
                                 exit(0);
                             }
                         } else
