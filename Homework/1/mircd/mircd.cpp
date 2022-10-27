@@ -8,6 +8,7 @@
 #include <time.h>
 #include <math.h>
 #include <unordered_map>
+#include <string>
 #include <sys/time.h>
 #include <sys/signal.h>
 #include <sys/types.h>
@@ -32,23 +33,8 @@ void fail(const char* s) {
 ssize_t sendstr(int fd, const char* buf) {
     return send(fd, buf, strlen(buf), SEND_FLAG);
 }
-
-char timebuf[20];
-
-const char SYSTEM[] = "***";
-char* msg2log(const char* from, const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    char msg[MAX_LINE];
-    vsprintf(msg, fmt, args);
-    va_end(args);
-
-    char frombuf[MAX_LINE/2];
-    sprintf(frombuf, from != SYSTEM ? "<%s>" : "%s", from);
-
-    char buf[MAX_LINE*2];
-    sprintf(buf, "%s %s %s\n", timebuf, frombuf, msg);
-    return strdup(buf);
+ssize_t sendstr(int fd, std::string buf) {
+    return send(fd, buf.c_str(), buf.size(), SEND_FLAG);
 }
 
 char* sock_info(const struct sockaddr_in* sock) {
@@ -56,35 +42,15 @@ char* sock_info(const struct sockaddr_in* sock) {
     sprintf(buf, "%s:%d", inet_ntop(AF_INET, &sock->sin_addr, host, 16), ntohs(sock->sin_port));
     return strdup(buf);
 }
-char* randstr() {
-    char buf[8];
-    for(int i = 0; i < 7; i++)
-        buf[i] = rand() % 26 + 'a';
-    return strdup(buf);
-}
 
 struct Client {
-    char *name, *info;
+    char *info;
+    std::string name;
+    Client(char* _info = nullptr): info(_info), name("") {}
 };
 
 int clicnt = 0;
-std::unordered_map<int, struct Client> cliinfo{};
-
-void sendexp(int skip, const char* from, const char* fmt, ...) {
-    if (fork() == 0) {
-        va_list args;
-        va_start(args, fmt);
-        char msg[MAX_LINE];
-        vsprintf(msg, fmt, args);
-        va_end(args);
-        char* log = msg2log(from, "%s", msg);
-        for(auto [fd, cli]: cliinfo)
-            if (fd != skip)
-                sendstr(fd, log);
-        free(log);
-        exit(0);
-    }
-}
+std::unordered_map<int, Client> cliinfo{};
 
 int handle_new_client(int listenfd) {
     struct sockaddr_in cliaddr;
@@ -95,16 +61,12 @@ int handle_new_client(int listenfd) {
     int on = 1;
     if ((on = 1) && ioctl(connfd, FIONBIO, &on) < 0)
         fail("ioctl: FIONBIO connfd");
+
     clicnt++;
-    char* name = randstr();
     char* info = sock_info(&cliaddr);
     printf("* client connected from %s\n", info);
-    sendexp(connfd, SYSTEM, "User <%s> has just landed on the server", name);
-    cliinfo[connfd].info = info;
-    cliinfo[connfd].name = name;
-    char* msg = msg2log(SYSTEM, "Welcome to the simple CHAT server\nTotal %d users online now. Your name is <%s>", clicnt, name);
-    sendstr(connfd, msg);
-    free(msg);
+    cliinfo.emplace(connfd, info);
+
     return connfd;
 }
 
@@ -115,61 +77,13 @@ int handle_client_input(int connfd) {
     if (n <= 0) {
         close(connfd);
         clicnt--;
-        char* info = cliinfo[connfd].info;
-        char* name = cliinfo[connfd].name;
+        auto cli = cliinfo[connfd];
+        printf("* client %s disconnected\n", cli.info);
         cliinfo.erase(connfd);
-        printf("* client %s disconnected\n", info);
-        sendexp(connfd, SYSTEM, "User <%s> has left the server", name);
-        free(info);
-        free(name);
+        free(cli.info);
+        return -1;
     } else {
-        if (buf[0] == '/') {
-            char* token = strtok(buf, " \n");
-            if (!strcmp(token, "/exit")) {
-                exit(0);
-            } else
-            if (!strcmp(token, "/name") && n > 7) {
-                char* name = strdup(strtok(buf+6, "\n"));
-                char* msg = msg2log(SYSTEM, "Nickname changed to <%s>", name);
-                sendstr(connfd, msg);
-                free(msg);
-                sendexp(connfd, SYSTEM, "User <%s> renamed to <%s>", cliinfo[connfd].name, name);
-                free(cliinfo[connfd].name);
-                cliinfo[connfd].name = name;
-            } else
-            if (!strcmp(token, "/who")) {
-                if (fork() == 0) {
-                    int mxname = 0; // 123.123.123.123:65535 -> 21 char
-                    for(auto [fd,cli]: cliinfo) {
-                        int len = strlen(cli.name);
-                        if (len > mxname) mxname = len;
-                    }
-                    int len = 2 + mxname + 22 + 1;
-                    int size = len * (clicnt+2);
-                    char* table = (char*)malloc(size);
-                    memset(table, '-', len);
-                    table[len-1] = '\n';
-                    int k = 0;
-                    for(auto [fd,cli]: cliinfo)
-                        sprintf(table + len * ++k, "%c %-*s %21s\n",
-                            " *"[fd == connfd], mxname, cli.name, cli.info
-                        );
-                    memset(table + size - len, '-', len);
-                    table[size-1] = '\n';
-                    send(connfd, table, size, SEND_FLAG);
-                    exit(0);
-                }
-            } else
-            {
-                char* msg = msg2log(SYSTEM, "Unknown or incomplete command <%s>", token);
-                sendstr(connfd, msg);
-                free(msg);
-            }
-        } else {
-            char* token = strtok(buf, "\n");
-            if (token)
-                sendexp(connfd, cliinfo[connfd].name, "%s", token);
-        }
+        // TODO
     }
     return 0;
 }
@@ -189,7 +103,8 @@ int main(int argc, char* argv[]) {
     if (listenfd < 0) fail("listenfd");
 
     int on = 1;
-    if ((on = 1) && setsockopt(listenfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof (on)) < 0) fail("setsockopt(SO_REUSEPORT)");
+    if ((on = 1) && setsockopt(listenfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof (on)) < 0) {
+        fail("setsockopt(SO_REUSEPORT)"); }
 
 	struct sockaddr_in servaddr;
 	bzero(&servaddr, sizeof(servaddr));
@@ -218,15 +133,6 @@ int main(int argc, char* argv[]) {
 		int nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
 		if (nfds == -1)
             fail("epoll_wait");
-
-        time_t rawtime;
-        struct tm * ti;
-        time (&rawtime);
-        ti = localtime (&rawtime);
-        sprintf(timebuf, "%4d-%02d-%02d %02d:%02d:%02d",
-            ti->tm_year + 1900, ti->tm_mon+1, ti->tm_mday,
-            ti->tm_hour, ti->tm_min, ti->tm_sec
-        );
 
 		for (int i = 0; i < nfds; ++i) {
 			if (events[i].data.fd == listenfd) {
