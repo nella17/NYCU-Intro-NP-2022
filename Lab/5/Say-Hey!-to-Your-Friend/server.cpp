@@ -122,6 +122,7 @@ int handle_client_input(int connfd) {
         sendexp(connfd, SYSTEM, "User <%s> has left the server", name);
         free(info);
         free(name);
+        return -1;
     } else {
         if (buf[0] == '/') {
             char* token = strtok(buf, " \n");
