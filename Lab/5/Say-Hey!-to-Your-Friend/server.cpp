@@ -113,7 +113,6 @@ int handle_client_input(int connfd) {
     bzero(buf, sizeof(buf));
     int n = read(connfd, buf, MAX_LINE);
     if (n <= 0) {
-        close(connfd);
         clicnt--;
         char* info = cliinfo[connfd].info;
         char* name = cliinfo[connfd].name;
@@ -236,13 +235,14 @@ int main(int argc, char* argv[]) {
                 ev.events = EPOLLIN | EPOLLET;
                 ev.data.fd = connfd;
                 if (epoll_ctl(epollfd, EPOLL_CTL_ADD, connfd, &ev) == -1)
-                    fail("epoll_ctl: connfd");
+                    fail("epoll_ctl: connfd(+)");
 			} else {
 				int connfd = events[i].data.fd;
                 int stat = handle_client_input(connfd);
                 if (stat == -1) {
                     if (epoll_ctl(epollfd, EPOLL_CTL_DEL, connfd, &events[i]) == -1)
-                        fail("epoll_ctl: connfd");
+                        fail("epoll_ctl: connfd(-)");
+                    close(connfd);
                 }
 			}
 		}
