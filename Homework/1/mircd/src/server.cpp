@@ -43,28 +43,18 @@ Server::Server(int listenport) {
 }
 
 void Server::interactive() {
+    struct epoll_event events[MAX_EVENTS];
 	for (;;) {
 		int nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
 		if (nfds == -1)
             fail("epoll_wait");
 
 		for (int i = 0; i < nfds; ++i) {
-			if (events[i].data.fd == listenfd) {
-                int connfd = handle_new_client();
-                struct epoll_event ev;
-                bzero(&ev, sizeof(ev));
-                ev.events = EPOLLIN | EPOLLET;
-                ev.data.fd = connfd;
-                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, connfd, &ev) == -1)
-                    fail("epoll_ctl: connfd");
+            int fd = events[i].data.fd;
+			if (fd == listenfd) {
+                handle_new_client();
 			} else {
-				int connfd = events[i].data.fd;
-                int stat = handle_client_input(connfd);
-                if (stat == -1) {
-                    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, connfd, &events[i]) == -1)
-                        fail("epoll_ctl: connfd");
-                    close(connfd);
-                }
+                handle_client_input(fd);
 			}
 		}
 	}
@@ -85,6 +75,13 @@ int Server::handle_new_client() {
     printf("* client connected from %s\n", info);
     cliinfo.emplace(connfd, info);
 
+    struct epoll_event ev;
+    bzero(&ev, sizeof(ev));
+    ev.events = EPOLLIN | EPOLLET;
+    ev.data.fd = connfd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, connfd, &ev) == -1)
+        fail("epoll_ctl: connfd");
+
     return connfd;
 }
 
@@ -93,14 +90,30 @@ int Server::handle_client_input(int connfd) {
     bzero(buf, sizeof(buf));
     int n = read(connfd, buf, MAX_LINE);
     if (n <= 0) {
-        clicnt--;
-        auto cli = cliinfo[connfd];
-        printf("* client %s disconnected\n", cli.info);
-        cliinfo.erase(connfd);
-        free(cli.info);
+        disconnect(connfd);
         return -1;
     } else {
         // TODO
     }
     return 0;
+}
+
+void Server::disconnect(int connfd) {
+    auto it = cliinfo.find(connfd);
+    if (it == cliinfo.end()) return;
+
+    clicnt--;
+    auto cli = it->second;
+    printf("* client %s disconnected\n", cli.info);
+    cliinfo.erase(it);
+    free(cli.info);
+
+    struct epoll_event ev;
+    bzero(&ev, sizeof(ev));
+	ev.events = EPOLLIN;
+	ev.data.fd = listenfd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, connfd, &ev) == -1)
+        fail("epoll_ctl: connfd");
+
+    close(connfd);
 }

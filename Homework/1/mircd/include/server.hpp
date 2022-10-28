@@ -16,10 +16,10 @@ struct Client {
 class Server {
 private:
     int listenfd, epollfd;
-    struct epoll_event events[MAX_EVENTS];
 
     int handle_new_client();
     int handle_client_input(int connfd);
+    void disconnect(int connfd);
 
 public:
     int clicnt = 0;
