@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <time.h>
 #include <math.h>
+#include <fcntl.h>
 #include <sys/time.h>
 #include <sys/signal.h>
 #include <sys/types.h>
@@ -14,6 +15,8 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+
+#define set_CLOEXEC(fd) fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC)
 
 void fail(const char* s) {
     if (errno) perror(s);
@@ -35,6 +38,8 @@ int main(int argc, char* argv[]) {
 
 	int listenfd = socket(AF_INET, SOCK_STREAM, 0);
     if (listenfd < 0) fail("listenfd");
+
+    if (set_CLOEXEC(listenfd) < 0) fail("fcntl");
 
     int on = 1;
     if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof (on)) < 0)
@@ -64,6 +69,7 @@ int main(int argc, char* argv[]) {
 		if ((fork()) == 0) {
 			close(listenfd);
             int oldstderr = dup(2);
+            if (set_CLOEXEC(oldstderr) < 0) fail("fcntl");
             dup2(connfd, 0);
             dup2(connfd, 1);
             dup2(connfd, 2);
