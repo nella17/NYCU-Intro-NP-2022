@@ -1,5 +1,12 @@
 #include "utils.hpp"
 
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 void fail(const char* s) {
     if (errno) perror(s);
     else fprintf(stderr, "%s: unknown error", s);

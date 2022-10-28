@@ -1,17 +1,8 @@
 #pragma once
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <unordered_map>
 #include <string>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
+#include <unordered_map>
 #include <sys/epoll.h>
-#include <arpa/inet.h>
-
-#include "utils.hpp"
 
 #define MAX_EVENTS 1024
 #define MAX_LINE 1024

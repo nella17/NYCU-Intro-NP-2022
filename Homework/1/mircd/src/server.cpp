@@ -1,5 +1,15 @@
 #include "server.hpp"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <arpa/inet.h>
+
+#include "utils.hpp"
+
 Server::Server(int listenport) {
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
     if (listenfd < 0) fail("listenfd");
