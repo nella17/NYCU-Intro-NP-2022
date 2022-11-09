@@ -90,8 +90,11 @@ The required response and error messages are listed below. You can find the deta
 (431) ERR_NONICKNAMEGIVEN
 (436) ERR_NICKCOLLISION
 (442) ERR_NOTONCHANNEL
-(451) ERR_NOTREGISTERED
 (461) ERR_NEEDMOREPARAMS
+
+Removed Error Codes
+-----------------------
+(451) ERR_NOTREGISTERED
 ```
 
 :::success
