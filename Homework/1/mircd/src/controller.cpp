@@ -13,7 +13,7 @@ bool Controller::client_del(int connfd) {
     auto client = it->second;
     printf("* client %s disconnected\n", client.info);
     database.client_info.erase(it);
-    database.nick_fd.erase(client.nickname);
+    database.nick_mp.erase(client.nickname);
     free(client.info);
     free(client.host);
     return true;
@@ -51,7 +51,7 @@ void Controller::call(int connfd, argv_t& argv) {
     if (it == cmds.end())
         throw CMD_MSG{ ERR::UNKNOWNCOMMAND, argv_t{ cmd, "Unknown command" } };
 
-    auto& client = database.client_info.find(connfd)->second;
+    auto& client = database.get(connfd);
     bool regist = client.hasRegist();
     if (!regist and !unreg_allow.count(cmd))
         throw CMD_MSG{ ERR::NOTREGISTERED, argv_t{ "You have not registered" } };
@@ -61,11 +61,8 @@ void Controller::call(int connfd, argv_t& argv) {
     if (argv.size() < item.parm_min)
         throw CMD_MSG{ ERR::NEEDMOREPARAMS, argv_t{ cmd, "Not enough parameters" } };
     (this->*item.fp)(client, argv);
-    if (!regist) {
-        if (client.regist()) {
-            sendcmds(connfd, WELCOME_CMDS);
-        }
-    }
+    if (!regist and client.regist())
+        sendcmds(connfd, WELCOME_CMDS);
     return;
 }
 
@@ -77,8 +74,8 @@ void Controller::nick(Client& client, argv_t& argv) {
     if (database.nickInUse(nickname))
         throw CMD_MSG{ ERR::NICKCOLLISION, argv_t{ nickname, "Nickname collision KILL" } };
     if (client.hasNick())
-        database.nick_fd.erase(client.nickname);
-    database.nick_fd.emplace(nickname, client.connfd);
+        database.nick_mp.erase(client.nickname);
+    database.nick_mp.emplace(nickname, client);
     client.status |= Client::HAS::NICK;
     client.nickname = nickname;
     return;
