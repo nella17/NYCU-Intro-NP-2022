@@ -8,6 +8,7 @@ private:
 
 public:
     std::unordered_map<int, Client> client_info{};
+    std::unordered_map<std::string, int> nick_fd{};
 
-    bool isRegist(int);
+    bool nickInUse(std::string);
 };

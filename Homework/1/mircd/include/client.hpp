@@ -17,5 +17,7 @@ public:
     std::string nickname, username, hostname, servername, realname;
     Client(int, char*);
     bool regist();
+    bool isRegist();
+    bool canRegist();
 };
 
