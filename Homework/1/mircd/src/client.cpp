@@ -5,15 +5,19 @@ Client::Client(int _connfd, char* _info, char* _host):
     nickname(), username(), hostname(), servername(), realname() {}
 
 bool Client::regist() {
-    if (isRegist() or !canRegist())
+    if (hasRegist() or !canRegist())
         return false;
     status |= HAS::WELCOME;
     return true;
 }
 
-bool Client::isRegist() {
+bool Client::hasRegist() {
     return (status & HAS::WELCOME) == HAS::WELCOME;
 }
 bool Client::canRegist() {
     return (status & HAS::REGIST) == HAS::REGIST;
+}
+
+bool Client::hasNick() {
+    return (status & HAS::NICK) == HAS::NICK;
 }

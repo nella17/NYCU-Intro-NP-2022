@@ -19,7 +19,8 @@ public:
 
     Client(int, char*, char*);
     bool regist();
-    bool isRegist();
+    bool hasRegist();
     bool canRegist();
+    bool hasNick();
 };
 

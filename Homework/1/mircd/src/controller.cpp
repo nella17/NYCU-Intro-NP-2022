@@ -52,7 +52,7 @@ void Controller::call(int connfd, argv_t& argv) {
         throw CMD_MSG{ ERR::UNKNOWNCOMMAND, argv_t{ cmd, "Unknown command" } };
 
     auto& client = database.client_info.find(connfd)->second;
-    bool regist = client.isRegist();
+    bool regist = client.hasRegist();
     if (!regist and !unreg_allow.count(cmd))
         throw CMD_MSG{ ERR::NOTREGISTERED, argv_t{ "You have not registered" } };
 
@@ -71,20 +71,20 @@ void Controller::call(int connfd, argv_t& argv) {
 
 // connection
 void Controller::nick(Client& client, argv_t& argv) {
-    if (client.isRegist())
-        throw CMD_MSG{ ERR::ALREADYREGISTRED, argv_t{ "You may not reregister" } };
     if (argv.empty())
         throw CMD_MSG{ ERR::NONICKNAMEGIVEN, argv_t{ "No nickname given" } };
     auto nickname = argv[0];
     if (database.nickInUse(nickname))
         throw CMD_MSG{ ERR::NICKCOLLISION, argv_t{ nickname, "Nickname collision KILL" } };
+    if (client.hasNick())
+        database.nick_fd.erase(client.nickname);
     database.nick_fd.emplace(nickname, client.connfd);
     client.status |= Client::HAS::NICK;
     client.nickname = nickname;
     return;
 }
 void Controller::user(Client& client, argv_t& argv) {
-    if (client.isRegist())
+    if (client.hasRegist())
         throw CMD_MSG{ ERR::ALREADYREGISTRED, argv_t{ "You may not reregister" } };
     client.status |= Client::HAS::USER;
     client.username     = argv[0];
