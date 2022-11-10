@@ -60,7 +60,7 @@ void Controller::call(int connfd, argv_t& argv) {
 
     if (argv.size() < item.parm_min)
         throw CMD_MSG{ ERR::NEEDMOREPARAMS, argv_t{ cmd, "Not enough parameters" } };
-    (this->*item.fp)(connfd, argv);
+    (this->*item.fp)(client, argv);
     if (!regist) {
         if (client.regist()) {
             sendcmds(connfd, WELCOME_CMDS);
@@ -70,8 +70,7 @@ void Controller::call(int connfd, argv_t& argv) {
 }
 
 // connection
-void Controller::nick(int connfd, argv_t& argv) {
-    auto& client = database.client_info.find(connfd)->second;
+void Controller::nick(Client& client, argv_t& argv) {
     if (client.isRegist())
         throw CMD_MSG{ ERR::ALREADYREGISTRED, argv_t{ "You may not reregister" } };
     if (argv.empty())
@@ -79,13 +78,12 @@ void Controller::nick(int connfd, argv_t& argv) {
     auto nickname = argv[0];
     if (database.nickInUse(nickname))
         throw CMD_MSG{ ERR::NICKCOLLISION, argv_t{ nickname, "Nickname collision KILL" } };
-    database.nick_fd.emplace(nickname, connfd);
+    database.nick_fd.emplace(nickname, client.connfd);
     client.status |= Client::HAS::NICK;
     client.nickname = nickname;
     return;
 }
-void Controller::user(int connfd, argv_t& argv) {
-    auto& client = database.client_info.find(connfd)->second;
+void Controller::user(Client& client, argv_t& argv) {
     if (client.isRegist())
         throw CMD_MSG{ ERR::ALREADYREGISTRED, argv_t{ "You may not reregister" } };
     client.status |= Client::HAS::USER;
@@ -95,45 +93,45 @@ void Controller::user(int connfd, argv_t& argv) {
     client.realname     = argv[3];
     return;
 }
-void Controller::quit(int /* connfd */, argv_t& /* argv */) {
+void Controller::quit(Client& /* client */, argv_t& /* argv */) {
     throw EVENT::DISCONNECT;
 }
 
 // channel op
-void Controller::join(int /* connfd */, argv_t& /* argv */) {
+void Controller::join(Client& /* client */, argv_t& /* argv */) {
     return;
 }
-void Controller::part(int /* connfd */, argv_t& /* argv */) {
+void Controller::part(Client& /* client */, argv_t& /* argv */) {
     return;
 }
-void Controller::topic(int /* connfd */, argv_t& /* argv */) {
+void Controller::topic(Client& /* client */, argv_t& /* argv */) {
     return;
 }
-void Controller::names(int /* connfd */, argv_t& /* argv */) {
+void Controller::names(Client& /* client */, argv_t& /* argv */) {
     return;
 }
-void Controller::list(int /* connfd */, argv_t& /* argv */) {
+void Controller::list(Client& /* client */, argv_t& /* argv */) {
     return;
 }
 
 // send message
-void Controller::privmsg(int /* connfd */, argv_t& /* argv */) {
+void Controller::privmsg(Client& client, argv_t& argv) {
     return;
 }
 
 // misc
-void Controller::ping(int connfd, argv_t& argv) {
+void Controller::ping(Client& client, argv_t& argv) {
     if (argv.empty())
         throw CMD_MSG{ ERR::NOORIGIN, argv_t{ "No origin specified" } };
-    sendstr(connfd, "PONG\n");
+    sendstr(client.connfd, "PONG\n");
     return;
 }
 
 // optional
-void Controller::users(int connfd, argv_t& /* argv */) {
+void Controller::users(Client& client, argv_t& /* argv */) {
 	int mxname = 6; // 123.123.123.123 -> 11 char
-	for(auto [fd, client]: database.client_info) {
-		int len = client.nickname.size();
+	for(auto [fd, cli]: database.client_info) {
+		int len = cli.nickname.size();
 		if (len > mxname) mxname = len;
 	}
     int size = mxname + 1 + 8 + 1 + 11 + 1;
@@ -144,10 +142,10 @@ void Controller::users(int connfd, argv_t& /* argv */) {
         out.emplace_back(cmd, argv_t{ buf });
     };
     append(RPL::USERSSTART, "UserID", "Terminal", "Host");
-	for(auto [fd, client]: database.client_info) {
-        append(RPL::USERS, client.nickname.c_str(), "-", client.host);
+	for(auto [fd, cli]: database.client_info) {
+        append(RPL::USERS, cli.nickname.c_str(), "-", cli.host);
     }
     free(buf);
-    sendcmds(connfd, out);
+    sendcmds(client.connfd, out);
     return;
 }
