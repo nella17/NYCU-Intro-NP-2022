@@ -26,7 +26,7 @@ The required commands are listed below. Note that command arguments enclosed by 
 ```
 NICK <nickname>
 USER <username> <hostname> <servername> <realname>
-PING [<message>]
+PING <server1> [<server2>]
 LIST [<channel>]
 JOIN <channel>
 TOPIC <channel> [<topic>]
@@ -38,7 +38,11 @@ QUIT
 ```
 
 You can find the details of each command in Section 4 of [RFC 1459](https://www.rfc-editor.org/rfc/rfc1459.html).
-
+:::danger
+PING conmmand changed from PING <message> to PING <server1> [<server2>]
+    
+To simplify the implementation, you can always repond PONG to the PING message **without** checking the availability of the target server. Respond **ERR_NOORIGIN** if no server is given.
+:::
 :::success
 Additional remarks for the commands listed above are summarized as follows. These remarks might make your implementation simpler.
 
@@ -150,7 +154,7 @@ Connect to an added server named `<servername>`. For example, `/connect mircd`.
 
 ## Demonstration
 
-1. [20 pts] Connect to the server and receive the message of the day (motd).
+1. [15 pts] Connect to the server and receive the message of the day (motd).
 
 :::success
 You may use the following commands to emulate two IRC users connecting to the same server. Suppose the server runs at `localhost` port `10004`. The command for *User1* and *User2* should be run in two terminals, respectively.
@@ -169,11 +173,13 @@ If you want to clear the settings for the users, remove the directories `user1` 
 
 1. [15 pts] List available channels: weechat command `/list`
 
-1. [20 pts] Join a channel successfully: weechat command `/join #chan1`
+1. [15 pts] Join a channel successfully: weechat command `/join #chan1`
 
 1. [15 pts] Get and set channel topic: weechat command `/topic hello, world!`
 
 1. [15 pts] Send messages to a channel. Users can simply type messages in a channel.
+
+1. [10 pts] Correct handle error condition.
 
 To simplify the demo process, you may run the following commands iteratively for the two users after they have connected to the server.
 
@@ -210,4 +216,70 @@ Here is a sample [pcap file](https://inp111.zoolab.org/hw01/mircd.pcap) for you 
 - User2 joined channel `#chal1` and sent a message [top: user1; bottom: user2].
 ![weechat-connected](https://inp111.zoolab.org/hw01/03-weechat-join-channel-and-send.png)
 
+## Error test_case
+In this part, we will give some test_case let you to check your error handle.
+
+We use `nc` command to connect server to test error, you need to use NICK and USER command after  `nc` , since only after both NICK and USER have been received from a client does a user become registered.
+
+```
+nc localhost 10004            //connect to your server
+
+NICK Kilac            
+USER Kilac localhost test kilac
+    <<success connect>>
+JOIN #hehe            //These arguments can set by yourself
+```
+    
+1. (401) ERR_NOSUCHNICK
+    ```
+    PRIVMSG #cool hello            // cool doesn't exist 
+    :mircd 401 Kilac #cool :No such nick/channel
+    ```
+1. (403) ERR_NOSUCHCHANNEL
+    ```
+    PART #cool            // cool doesn't exist 
+    :mircd 403 Kilac #cool :No such channel
+    ```
+1. (411) ERR_NORECIPIENT
+    ```
+    PRIVMSG
+    :mircd 411 Kilac :No recipient given (PRIVMSG)
+    ```
+1. (412) ERR_NOTEXTTOSEND
+    ```
+    PRIVMSG #hehe
+    :mircd 412 Kilac :No text to send
+    ```
+1. (421) ERR_UNKNOWNCOMMAND
+    ```
+    TEST
+    :mircd 421 Kilac TEST :Unknown command
+    ```
+1. (431) ERR_NONICKNAMEGIVEN
+    ```
+    NICK
+    :mircd 431 :No nickname given
+    ```
+1. (436) ERR_NICKCOLLISION
+    ```
+    NICK Kilac             // Kilac already used by another one
+    :mircd 436 Kilac :Nickname collision KILL
+    ```
+1. (442) ERR_NOTONCHANNEL
+    ```
+    TOPIC #hehe
+    :mircd 442 Kilac #hehe :You are not on that channel
+
+    PART #hehe
+    :mircd 442 Kilac #hehe :You are not on that channel
+    ```
+1. (461) ERR_NEEDMOREPARAMS
+    ```
+    USER
+    :mircd 461 Kilac USER :Not enought parameters
+    ```
+
+:::danger
+Next week demo we may use another test_case to test your server !!!
+:::
 
