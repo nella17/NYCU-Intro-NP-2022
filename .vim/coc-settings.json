@@ -1,7 +1,6 @@
 {
     "clangd.fallbackFlags": [
         "-I../include",
-        "-std=c++17",
         "-Wall", "-Wextra", "-Wshadow"
     ]
 }
