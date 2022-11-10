@@ -4,7 +4,7 @@
 
 void Controller::client_add(int connfd, char* info) {
     printf("* client connected from %s\n", info);
-    database.client_info.emplace(connfd, info);
+    database.client_info.try_emplace(connfd, connfd, info);
 }
 bool Controller::client_del(int connfd) {
     auto it = database.client_info.find(connfd);
@@ -65,7 +65,7 @@ void Controller::nick(int connfd, argv_t& argv) {
     if (database.isRegist(connfd))
         throw ERR_string{ ERR::ALREADYREGISTRED, ":You may not reregister" };
     auto client = database.client_info.find(connfd)->second;
-    client.regist |= HAS_NICK;
+    client.status |= Client::HAS::NICK;
     client.nickname = argv[0];
     return;
 }
@@ -73,7 +73,7 @@ void Controller::user(int connfd, argv_t& argv) {
     if (database.isRegist(connfd))
         throw ERR_string{ ERR::ALREADYREGISTRED, ":You may not reregister" };
     auto client = database.client_info.find(connfd)->second;
-    client.regist |= HAS_USER;
+    client.status |= Client::HAS::USER;
     client.username     = argv[0];
     client.hostname     = argv[1];
     client.servername   = argv[2];

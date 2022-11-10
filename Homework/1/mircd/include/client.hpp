@@ -2,15 +2,20 @@
 
 #include <string>
 
-constexpr char HAS_NICK = 1;
-constexpr char HAS_USER = 2;
-constexpr char HAS_REGIST = HAS_NICK | HAS_USER;
-
 class Client {
 public:
-    char regist;
+    struct HAS {
+        constexpr static char NICK     = 1;
+        constexpr static char USER     = 2;
+        constexpr static char WELCOME  = 4;
+        constexpr static char REGIST   = NICK | USER;
+    };
+
+    char status;
+    int connfd;
     char* const info;
     std::string nickname, username, hostname, servername, realname;
-    Client(char* _info);
+    Client(int, char*);
+    bool regist();
 };
 
