@@ -102,10 +102,8 @@ int Server::handle_client_input(int connfd) {
 #endif
                 auto cmds = parse(token, n);
                 controller.call(connfd, cmds);
-            } catch (ERR_string e) {
-                auto [err, msg] = e;
-                auto text = std::to_string(err) + " " + msg + "\n";
-                sendstr(connfd, text);
+            } catch (CMD_MSG cmd) {
+                sendcmd(connfd, cmd);
             } catch (EVENT e) {
                 switch (e) {
                     case EVENT::DISCONNECT:

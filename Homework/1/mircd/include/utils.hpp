@@ -3,9 +3,12 @@
 #include <sys/socket.h>
 #include <string>
 #include <deque>
+#include <vector>
+
 
 #include "enums.hpp"
-using ERR_string = std::pair<ERR, std::string>;
+using argv_t = std::deque<std::string>;
+using CMD_MSG = std::pair<ERR, argv_t>;
 
 enum EVENT {
     DISCONNECT,
@@ -18,7 +21,9 @@ void fail(const char* s);
 void sendstr(int fd, const char* buf);
 void sendstr(int fd, std::string buf);
 
+void sendcmd(int fd, CMD_MSG cmd);
+void sendcmds(int fd, std::vector<CMD_MSG> cmds);
+
 char* sock_info(const struct sockaddr_in* sock);
 
-using argv_t = std::deque<std::string>;
 argv_t parse(const char* buf, int size);

@@ -47,23 +47,32 @@ void Controller::call(int connfd, argv_t argv) {
     argv.pop_front();
     auto it = cmds.find(cmd);
     if (it == cmds.end())
-        throw ERR_string{ ERR::UNKNOWNCOMMAND, cmd + " :Unknown command" };
+        throw CMD_MSG{ ERR::UNKNOWNCOMMAND, argv_t{ cmd, "Unknown command" } };
 
-    if (!database.isRegist(connfd) and !unreg_allow.count(cmd))
-        throw ERR_string{ ERR::NOTREGISTERED, ":You have not registered" };
+    bool regist = database.isRegist(connfd);
+    if (!regist and !unreg_allow.count(cmd))
+        throw CMD_MSG{ ERR::NOTREGISTERED, argv_t{ "You have not registered" } };
 
     auto item = it->second;
 
     if (argv.size() < item.parm_min)
-        throw ERR_string{ ERR::NEEDMOREPARAMS, cmd + " :Not enough parameters" };
+        throw CMD_MSG{ ERR::NEEDMOREPARAMS, argv_t{ cmd, "Not enough parameters" } };
     (this->*item.fp)(connfd, argv);
+    if (!regist) {
+        auto client = database.client_info.find(connfd)->second;
+        if (client.regist()) {
+            sendstr(connfd, WELCOME_MESSAGE);
+        }
+    }
     return;
 }
 
 // connection
 void Controller::nick(int connfd, argv_t& argv) {
     if (database.isRegist(connfd))
-        throw ERR_string{ ERR::ALREADYREGISTRED, ":You may not reregister" };
+        throw CMD_MSG{ ERR::ALREADYREGISTRED, argv_t{ "You may not reregister" } };
+    if (argv.empty())
+        throw CMD_MSG{ ERR::NONICKNAMEGIVEN, argv_t{ "No nickname given" } };
     auto client = database.client_info.find(connfd)->second;
     client.status |= Client::HAS::NICK;
     client.nickname = argv[0];
@@ -71,7 +80,7 @@ void Controller::nick(int connfd, argv_t& argv) {
 }
 void Controller::user(int connfd, argv_t& argv) {
     if (database.isRegist(connfd))
-        throw ERR_string{ ERR::ALREADYREGISTRED, ":You may not reregister" };
+        throw CMD_MSG{ ERR::ALREADYREGISTRED, argv_t{ "You may not reregister" } };
     auto client = database.client_info.find(connfd)->second;
     client.status |= Client::HAS::USER;
     client.username     = argv[0];

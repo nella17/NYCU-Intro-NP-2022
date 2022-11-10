@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <iostream>
 #include <unistd.h>
+#include <iostream>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -38,6 +38,13 @@ void sendstr(int fd, const char* buf) {
 }
 void sendstr(int fd, std::string buf) {
     return _sendstr(fd, "", buf.c_str());
+}
+
+void sendcmd(int fd, CMD_MSG cmd) {
+    sendcmds(fd, { cmd });
+}
+void sendcmds(int fd, std::vector<CMD_MSG> cmds) {
+    ;
 }
 
 char* sock_info(const struct sockaddr_in* sock) {
