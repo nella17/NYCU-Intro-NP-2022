@@ -2,9 +2,9 @@
 
 #include "utils.hpp"
 
-void Controller::client_add(int connfd, char* info) {
+void Controller::client_add(int connfd, char* info, char* host) {
     printf("* client connected from %s\n", info);
-    database.client_info.try_emplace(connfd, connfd, info);
+    database.client_info.try_emplace(connfd, connfd, info, host);
 }
 bool Controller::client_del(int connfd) {
     auto it = database.client_info.find(connfd);
@@ -15,6 +15,7 @@ bool Controller::client_del(int connfd) {
     database.client_info.erase(it);
     database.nick_fd.erase(client.nickname);
     free(client.info);
+    free(client.host);
     return true;
 }
 
@@ -129,6 +130,24 @@ void Controller::ping(int connfd, argv_t& argv) {
 }
 
 // optional
-void Controller::users(int /* connfd */, argv_t& /* argv */) {
+void Controller::users(int connfd, argv_t& /* argv */) {
+	int mxname = 6; // 123.123.123.123 -> 11 char
+	for(auto [fd, client]: database.client_info) {
+		int len = client.nickname.size();
+		if (len > mxname) mxname = len;
+	}
+    int size = mxname + 1 + 8 + 1 + 11 + 1;
+    auto buf = new char[size];
+    std::vector<CMD_MSG> out{};
+    auto append = [&](int cmd, const char* name, const char* term, const char* host) {
+		sprintf(buf, "%-*s %-8s %-21s", mxname, name, term, host);
+        out.emplace_back(cmd, argv_t{ buf });
+    };
+    append(RPL::USERSSTART, "UserID", "Terminal", "Host");
+	for(auto [fd, client]: database.client_info) {
+        append(RPL::USERS, client.nickname.c_str(), "-", client.host);
+    }
+    free(buf);
+    sendcmds(connfd, out);
     return;
 }

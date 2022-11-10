@@ -26,5 +26,6 @@ void sendcmd(int fd, CMD_MSG cmd);
 void sendcmds(int fd, std::vector<CMD_MSG> cmds);
 
 char* sock_info(const struct sockaddr_in* sock);
+char* sock_host(const struct sockaddr_in* sock);
 
 argv_t parse(const char* buf, int size);

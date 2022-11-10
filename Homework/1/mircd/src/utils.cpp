@@ -63,6 +63,11 @@ char* sock_info(const struct sockaddr_in* sock) {
     sprintf(buf, "%s:%d", inet_ntop(AF_INET, &sock->sin_addr, host, 16), ntohs(sock->sin_port));
     return strdup(buf);
 }
+char* sock_host(const struct sockaddr_in* sock) {
+    char host[16];
+    inet_ntop(AF_INET, &sock->sin_addr, host, 16);
+    return strdup(host);
+}
 
 argv_t parse(const char* _buf, int size) {
     argv_t cmds{};

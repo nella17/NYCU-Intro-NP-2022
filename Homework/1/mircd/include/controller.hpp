@@ -9,7 +9,7 @@
 
 class Controller {
 public:
-    void client_add(int, char*);
+    void client_add(int, char*, char*);
     bool client_del(int);
 
     void call(int, argv_t&);

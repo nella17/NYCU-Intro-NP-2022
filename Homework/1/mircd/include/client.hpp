@@ -14,8 +14,10 @@ public:
     char status;
     int connfd;
     char* const info;
+    char* const host;
     std::string nickname, username, hostname, servername, realname;
-    Client(int, char*);
+
+    Client(int, char*, char*);
     bool regist();
     bool isRegist();
     bool canRegist();

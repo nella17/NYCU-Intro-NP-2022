@@ -72,7 +72,8 @@ int Server::handle_new_client() {
         fail("ioctl: FIONBIO connfd");
 
     char* info = sock_info(&client_addr);
-    controller.client_add(connfd, info);
+    char* host = sock_host(&client_addr);
+    controller.client_add(connfd, info, host);
 
     struct epoll_event ev;
     bzero(&ev, sizeof(ev));
