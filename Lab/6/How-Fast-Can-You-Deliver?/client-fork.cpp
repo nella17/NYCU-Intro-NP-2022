@@ -16,11 +16,8 @@
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 
+constexpr int BUF_SIZE = 65536;
 constexpr int MAX_LINE = 1024;
-
-int mss_size, buf_size;
-const int header_size = 0x42;
-char* buf;
 
 void fail(const char* s) {
     if (errno) perror(s);
@@ -28,8 +25,8 @@ void fail(const char* s) {
     exit(-1);
 }
 
-constexpr int n = 10;
-int epollfd, control, fds[n];
+constexpr int n = 20;
+int control = -1, pid[n];
 const char REPORT[] = "/report\n";
 const char RESET[] = "/reset\n";
 
@@ -42,22 +39,13 @@ void send(const char* s) {
 }
 
 void leave(int /* s */) {
-    send(REPORT);
-
-    close(epollfd);
-    close(control);
-    for(int i = 0; i < n; i++)
-        close(fds[i]);
+    if (control >= 0) {
+        send(REPORT);
+        close(control);
+        for(int i = 0; i < n; i++)
+            kill(pid[i], SIGTERM);
+    }
     exit(-1);
-}
-
-void epoll_add(int fd) {
-    struct epoll_event ev;
-    bzero(&ev, sizeof(ev));
-	ev.events = EPOLLOUT;
-	ev.data.fd = fd;
-	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev) < 0)
-		fail("epoll_ctl: fd(+)");
 }
 
 int connect(char* host, int port) {
@@ -89,36 +77,20 @@ signed main(int argc, char* argv[]) {
     char* ip = argv[1];
     int port = atoi(argv[2]);
 
-    control = connect(ip, port);
-    for(int i = 0; i < n; i++)
-        fds[i] = connect(ip, port+1);
-    send(RESET);
+    control = -1;
 
-	epollfd = epoll_create1(0);
-	if (epollfd < 0)
-		fail("epoll_create1");
-    for(int i = 0; i < n; i++)
-        epoll_add(fds[i]);
-
-    int flag = 0;
-    flag |= MSG_DONTWAIT;
-
-    socklen_t size = sizeof(mss_size);
-    if (getsockopt(fds[0], IPPROTO_TCP, TCP_MAXSEG, &mss_size, &size)) {
-        fail("getsockopt(TCP_MAXSEG)"); }
-    buf_size = mss_size - header_size;
-    buf = new char[buf_size];
-
-    struct epoll_event events[n];
-	for(;;) {
-		int nfds = epoll_wait(epollfd, events, n, -1);
-		if (nfds == -1)
-            fail("epoll_wait");
-        for(int i = 0; i < nfds; i++) {
-            int connfd = events[i].data.fd;
-            send(connfd, buf, buf_size, flag);
+    for(int i = 0; i < n; i++) {
+        if ((pid[i] = fork()) == 0) {
+            int connfd = connect(ip, port);
+            void* buf = malloc(BUF_SIZE);
+            for(;;)
+                write(connfd, buf, BUF_SIZE);
         }
-	}
+    }
+
+    control = connect(ip, port);
+    send(RESET);
+	for(;;) ;
 
     return 0;
 }

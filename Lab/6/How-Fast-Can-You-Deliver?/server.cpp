@@ -41,7 +41,9 @@ int create(int listenport) {
 	struct sockaddr_in servaddr;
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family      = AF_INET;
-	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	// servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    if (inet_pton(AF_INET, "127.0.0.1", &servaddr.sin_addr) <= 0) {
+        fail("inet_pton"); }
 	servaddr.sin_port        = htons(listenport);
 
 	if (bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0)
@@ -80,7 +82,9 @@ constexpr int MAX_DATA_LINE = 65536;
 constexpr int SEND_FLAG = MSG_NOSIGNAL | MSG_DONTWAIT;
 
 int serverfd, sinkfd, epollfd;
-std::unordered_map<int, int> mapping{}, cnt{};
+std::unordered_map<int, int> mapping{}, cnt{}, mss{};
+
+const int header_size = 0x42;
 
 int handle_new_client(int listenfd) {
     struct sockaddr_in cliaddr;
@@ -88,11 +92,16 @@ int handle_new_client(int listenfd) {
     int connfd = accept(listenfd, (struct sockaddr *) &cliaddr, &clilen);
     if (connfd == -1)
         fail("accept");
+    int mss_size;
+    socklen_t size = sizeof(mss_size);
+    if (getsockopt(connfd, IPPROTO_TCP, TCP_MAXSEG, &mss_size, &size)) {
+        fail("getsockopt(TCP_MAXSEG)"); }
     int on = 1;
     if ((on = 1) && ioctl(connfd, FIONBIO, &on) < 0)
         fail("ioctl: FIONBIO connfd");
     cnt[listenfd]++;
     mapping.emplace(connfd, listenfd);
+    mss.emplace(connfd, mss_size);
     return connfd;
 }
 
@@ -137,11 +146,14 @@ int handle_server(int connfd) {
         } else
         if (!strcmp(token, "/report")) {
             ld dt = current_time - start_time;
-            ld rate = (8 * recv_size) / dt / 1e6;
+            ld rate = (8 * recv_size) / dt / (1<<20);
             sendstr(connfd, "REPORT %lld %.6LFs %.6LfMbps\n", recv_size, dt, rate);
         } else
         if (!strcmp(token, "/clients")) {
             sendstr(connfd, "CLIENTS %d\n", cnt[sinkfd]);
+        } else
+        if (!strcmp(token, "/exit")) {
+            exit(0);
         } else
             ;
     }
@@ -149,11 +161,11 @@ int handle_server(int connfd) {
 }
 
 int handle_sink(int connfd) {
+    int buf_size = mss[connfd] - header_size;
     char buf[MAX_DATA_LINE];
-    bzero(buf, sizeof(buf));
-    int n = read(connfd, buf, MAX_LINE);
+    int n = read(connfd, buf, buf_size);
     if (n <= 0) return -1;
-    recv_size += n;
+    recv_size += header_size + n;
     return 0;
 }
 
