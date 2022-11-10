@@ -8,6 +8,21 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+std::vector<CMD_MSG> WELCOME_CMDS{
+    CMD_MSG{ RPL::WELCOME, argv_t{ "Welcome to the minimized IRC daemon!" } },
+    CMD_MSG{ RPL::LUSERCLIENT, argv_t{ "There are ? users and ? invisible on ? servers" } },
+    CMD_MSG{ RPL::MOTDSTART, argv_t{ R"(-  Hello, World!                       )" } },
+    CMD_MSG{ RPL::MOTDSTART, argv_t{ R"(-               @                    _ )" } },
+    CMD_MSG{ RPL::MOTDSTART, argv_t{ R"(-   ____  ___   _   _ _   ____.     | |)" } },
+    CMD_MSG{ RPL::MOTDSTART, argv_t{ R"(-  /  _ `'_  \ | | | '_/ /  __|  ___| |)" } },
+    CMD_MSG{ RPL::MOTDSTART, argv_t{ R"(-  | | | | | | | | | |   | |    /  _  |)" } },
+    CMD_MSG{ RPL::MOTDSTART, argv_t{ R"(-  | | | | | | | | | |   | |__  | |_| |)" } },
+    CMD_MSG{ RPL::MOTDSTART, argv_t{ R"(-  |_| |_| |_| |_| |_|   \____| \___,_|)" } },
+    CMD_MSG{ RPL::MOTDSTART, argv_t{ R"(-  minimized internet relay chat daemon)" } },
+    CMD_MSG{ RPL::MOTDSTART, argv_t{ R"(-                                      )" } },
+    CMD_MSG{ RPL::ENDOFMOTD, argv_t{ "End of message of the day" } },
+};
+
 void fail(const char* s) {
     if (errno) perror(s);
     else fprintf(stderr, "%s: unknown error", s);
@@ -29,13 +44,16 @@ void sendcmd(int fd, CMD_MSG cmd) {
 void sendcmds(int fd, std::vector<CMD_MSG> cmds) {
     std::string buf = "";
     for(auto [cmd, msg]: cmds) {
-        buf.append(std::to_string(cmd));
+        char tmp[4];
+        sprintf(tmp, "%03d", cmd);
+        buf.append(tmp);
         for(auto it = msg.begin(); it != msg.end(); it++) {
             buf.append(" ");
             if (next(it) == msg.end())
                 buf.append(":");
             buf.append(*it);
         }
+        buf.append("\n");
     }
     sendstr(fd, buf);
 }

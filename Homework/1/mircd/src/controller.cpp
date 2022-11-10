@@ -62,7 +62,7 @@ void Controller::call(int connfd, argv_t& argv) {
     (this->*item.fp)(connfd, argv);
     if (!regist) {
         if (client.regist()) {
-            sendstr(connfd, WELCOME_MESSAGE);
+            sendcmds(connfd, WELCOME_CMDS);
         }
     }
     return;

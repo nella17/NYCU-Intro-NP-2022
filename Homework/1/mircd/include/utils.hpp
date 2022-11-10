@@ -8,7 +8,9 @@
 
 #include "enums.hpp"
 using argv_t = std::deque<std::string>;
-using CMD_MSG = std::pair<ERR, argv_t>;
+using CMD_MSG = std::pair<int, argv_t>;
+
+extern std::vector<CMD_MSG> WELCOME_CMDS;
 
 enum EVENT {
     DISCONNECT,

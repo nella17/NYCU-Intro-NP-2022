@@ -1,6 +1,8 @@
 #pragma once
 
 enum RPL {
+    WELCOME     = 001,
+    LUSERCLIENT = 251,
     LISTSTART   = 321,
     LIST        = 322,
     LISTEND     = 323,
