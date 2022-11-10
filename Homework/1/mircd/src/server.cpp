@@ -93,14 +93,17 @@ int Server::handle_client_input(int connfd) {
         return -1;
     } else {
         for (char *str = buf, *save; ; str = NULL) {
-            char* token = strtok_r(str, "\n", &save);
+            char* token = strtok_r(str, "\r\n", &save);
             if (token == NULL)
                 break;
+            int size = strlen(token);
+            if (size == 0)
+                continue;
             try {
 #ifdef DEBUG
                 fprintf(stderr, "%s\n", token);
 #endif
-                auto cmds = parse(token, n);
+                auto cmds = parse(token, size);
                 controller.call(connfd, cmds);
             } catch (CMD_MSG cmd) {
                 sendcmd(connfd, cmd);
