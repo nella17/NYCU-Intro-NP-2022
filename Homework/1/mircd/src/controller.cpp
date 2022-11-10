@@ -39,7 +39,7 @@ const Controller::CmdsMap Controller::cmds{
     { "USERS",      { 0, &Controller::users } },
 };
 
-void Controller::call(int connfd, argv_t argv) {
+void Controller::call(int connfd, argv_t& argv) {
     if (argv.empty())
         return;
 

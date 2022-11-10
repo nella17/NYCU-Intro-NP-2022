@@ -12,7 +12,7 @@ public:
     void client_add(int, char*);
     bool client_del(int);
 
-    void call(int, argv_t);
+    void call(int, argv_t&);
 
 private:
     Database database;
