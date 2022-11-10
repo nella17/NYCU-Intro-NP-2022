@@ -18,7 +18,6 @@ constexpr int SEND_FLAG = MSG_NOSIGNAL | MSG_DONTWAIT;
 
 void fail(const char* s);
 
-void sendstr(int fd, const char* buf);
 void sendstr(int fd, std::string buf);
 
 void sendcmd(int fd, CMD_MSG cmd);

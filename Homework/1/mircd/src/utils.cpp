@@ -16,35 +16,28 @@ void fail(const char* s) {
 #endif
 }
 
-void _sendstr(int fd, const char* prefix, const char* _buf) {
-    std::string out = "";
-    char *buf = strdup(_buf);
-    for (char *str = buf, *save; ; str = NULL) {
-        char* token = strtok_r(str, "\n", &save);
-        if (token == NULL)
-            break;
-        out.append(prefix);
-        out.append(token, strlen(token));
-        out.append("\n");
-    }
-    free(buf);
-#ifdef DEBUG
-    std::cerr << out << std::flush;
-#endif
-    send(fd, out.c_str(), out.size(), SEND_FLAG);
-}
-void sendstr(int fd, const char* buf) {
-    return _sendstr(fd, "", buf);
-}
 void sendstr(int fd, std::string buf) {
-    return _sendstr(fd, "", buf.c_str());
+#ifdef DEBUG
+    std::cerr << buf << std::flush;
+#endif
+    send(fd, buf.c_str(), buf.size(), SEND_FLAG);
 }
 
 void sendcmd(int fd, CMD_MSG cmd) {
     sendcmds(fd, { cmd });
 }
 void sendcmds(int fd, std::vector<CMD_MSG> cmds) {
-    ;
+    std::string buf = "";
+    for(auto [cmd, msg]: cmds) {
+        buf.append(std::to_string(cmd));
+        for(auto it = msg.begin(); it != msg.end(); it++) {
+            buf.append(" ");
+            if (next(it) == msg.end())
+                buf.append(":");
+            buf.append(*it);
+        }
+    }
+    sendstr(fd, buf);
 }
 
 char* sock_info(const struct sockaddr_in* sock) {
