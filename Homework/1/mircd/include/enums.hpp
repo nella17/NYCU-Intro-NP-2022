@@ -21,6 +21,7 @@ enum RPL {
 enum ERR {
     NOSUCHNICK          = 401,
     NOSUCHCHANNEL       = 403,
+    NOORIGIN            = 409,
     NORECIPIENT         = 411,
     NOTEXTTOSEND        = 412,
     UNKNOWNCOMMAND      = 421,

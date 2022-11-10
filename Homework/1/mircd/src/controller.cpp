@@ -121,7 +121,10 @@ void Controller::privmsg(int /* connfd */, argv_t& /* argv */) {
 }
 
 // misc
-void Controller::ping(int /* connfd */, argv_t& /* argv */) {
+void Controller::ping(int connfd, argv_t& argv) {
+    if (argv.empty())
+        throw CMD_MSG{ ERR::NOORIGIN, argv_t{ "No origin specified" } };
+    sendstr(connfd, "PONG\n");
     return;
 }
 
