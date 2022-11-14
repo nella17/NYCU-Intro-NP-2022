@@ -44,9 +44,21 @@ void sendcmd(int fd, CMD_MSG cmd, std::string nick) {
 void sendcmds(int fd, CMD_MSGS cmds, std::string nick) {
     std::string buf = "";
     for(auto [cmd, msg]: cmds) {
-        char tmp[4];
-        sprintf(tmp, "%03d", cmd);
-        buf.append(tmp);
+        if (std::holds_alternative<std::string>(cmd)) {
+            buf.append(":");
+            if (!nick.empty()) {
+                buf.append(nick);
+                nick.clear();
+            }
+            buf.append(" ");
+            buf.append(std::get<std::string>(cmd));
+        } else if (std::holds_alternative<int>(cmd)) {
+            char tmp[4];
+            sprintf(tmp, "%03d", std::get<int>(cmd));
+            buf.append(tmp);
+        } else {
+            __builtin_unreachable();
+        }
         if (!nick.empty()) {
             buf.append(" ");
             buf.append(nick);
