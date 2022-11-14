@@ -17,7 +17,7 @@ public:
 private:
     Database database;
 
-    using func = void (Controller::*)(Client&, argv_t&);
+    using func = void (Controller::*)(Client&, const argv_t&&);
     struct CmdItem {
         size_t parm_min;
         func fp;
@@ -27,21 +27,21 @@ private:
     const static CmdsMap cmds;
 
     // connection
-    void nick(Client&, argv_t&);
-    void user(Client&, argv_t&);
-    void quit(Client&, argv_t&);
+    void nick(Client&, const argv_t&&);
+    void user(Client&, const argv_t&&);
+    void quit(Client&, const argv_t&&);
     // channel op
-    void join(Client&, argv_t&);
-    void part(Client&, argv_t&);
-    void topic(Client&, argv_t&);
-    void names(Client&, argv_t&);
-    void list(Client&, argv_t&);
+    void join(Client&, const argv_t&&);
+    void part(Client&, const argv_t&&);
+    void topic(Client&, const argv_t&&);
+    void names(Client&, const argv_t&&);
+    void list(Client&, const argv_t&&);
     // server query & cmd
     // send message
-    void privmsg(Client&, argv_t&);
+    void privmsg(Client&, const argv_t&&);
     // user query
     // misc
-    void ping(Client&, argv_t&);
+    void ping(Client&, const argv_t&&);
     // optional
-    void users(Client&, argv_t&);
+    void users(Client&, const argv_t&&);
 };
