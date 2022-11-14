@@ -4,15 +4,15 @@
 
 void Controller::client_add(int connfd, char* info, char* host) {
     printf("* client connected from %s\n", info);
-    database.client_info.try_emplace(connfd, connfd, info, host);
+    database.clients.try_emplace(connfd, connfd, info, host);
 }
 bool Controller::client_del(int connfd) {
-    auto it = database.client_info.find(connfd);
-    if (it == database.client_info.end())
+    auto it = database.clients.find(connfd);
+    if (it == database.clients.end())
         return false;
     auto client = it->second;
     printf("* client %s disconnected\n", client.info);
-    database.client_info.erase(it);
+    database.clients.erase(it);
     database.nick_mp.erase(client.nickname);
     free(client.info);
     free(client.host);
@@ -51,7 +51,7 @@ void Controller::call(int connfd, argv_t& argv) {
     if (it == cmds.end())
         throw CMD_MSG{ ERR::UNKNOWNCOMMAND, argv_t{ cmd, "Unknown command" } };
 
-    auto& client = database.get(connfd);
+    auto& client = database.getuser(connfd);
     bool regist = client.hasRegist();
     if (!regist and !unreg_allow.count(cmd))
         throw CMD_MSG{ ERR::NOTREGISTERED, argv_t{ "You have not registered" } };
@@ -127,19 +127,20 @@ void Controller::ping(Client& client, argv_t& argv) {
 // optional
 void Controller::users(Client& client, argv_t& /* argv */) {
 	int mxname = 6; // 123.123.123.123 -> 11 char
-	for(auto [fd, cli]: database.client_info) {
+	for(auto [fd, cli]: database.clients) {
 		int len = cli.nickname.size();
 		if (len > mxname) mxname = len;
 	}
     int size = mxname + 1 + 8 + 1 + 11 + 1;
     auto buf = new char[size];
-    std::vector<CMD_MSG> out{};
+    CMD_MSGS out{};
+    out.reserve(database.clients.size()+1);
     auto append = [&](int cmd, const char* name, const char* term, const char* host) {
 		sprintf(buf, "%-*s %-8s %-21s", mxname, name, term, host);
         out.emplace_back(cmd, argv_t{ buf });
     };
     append(RPL::USERSSTART, "UserID", "Terminal", "Host");
-	for(auto [fd, cli]: database.client_info) {
+	for(auto [fd, cli]: database.clients) {
         append(RPL::USERS, cli.nickname.c_str(), "-", cli.host);
     }
     free(buf);

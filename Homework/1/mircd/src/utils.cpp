@@ -8,7 +8,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-std::vector<CMD_MSG> WELCOME_CMDS{
+CMD_MSGS WELCOME_CMDS{
     CMD_MSG{ RPL::WELCOME, argv_t{ "Welcome to the minimized IRC daemon!" } },
     CMD_MSG{ RPL::LUSERCLIENT, argv_t{ "There are ? users and ? invisible on ? servers" } },
     CMD_MSG{ RPL::MOTDSTART, argv_t{ R"(-  Hello, World!                       )" } },

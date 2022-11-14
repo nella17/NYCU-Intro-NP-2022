@@ -5,12 +5,12 @@
 #include <deque>
 #include <vector>
 
-
 #include "enums.hpp"
 using argv_t = std::deque<std::string>;
 using CMD_MSG = std::pair<int, argv_t>;
+using CMD_MSGS = std::vector<CMD_MSG>;
 
-extern std::vector<CMD_MSG> WELCOME_CMDS;
+extern CMD_MSGS WELCOME_CMDS;
 
 enum EVENT {
     DISCONNECT,
