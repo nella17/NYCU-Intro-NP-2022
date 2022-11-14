@@ -22,8 +22,8 @@ void fail(const char* s);
 
 void sendstr(int fd, std::string buf);
 
-void sendcmd(int fd, CMD_MSG cmd);
-void sendcmds(int fd, std::vector<CMD_MSG> cmds);
+void sendcmd(int fd, CMD_MSG cmd, std::string nick = "");
+void sendcmds(int fd, CMD_MSGS cmds, std::string nick = "");
 
 char* sock_info(const struct sockaddr_in* sock);
 char* sock_host(const struct sockaddr_in* sock);

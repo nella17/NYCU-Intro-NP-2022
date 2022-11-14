@@ -62,7 +62,7 @@ void Controller::call(int connfd, argv_t& argv) {
         throw CMD_MSG{ ERR::NEEDMOREPARAMS, argv_t{ cmd, "Not enough parameters" } };
     (this->*item.fp)(client, argv);
     if (!regist and client.regist())
-        sendcmds(connfd, WELCOME_CMDS);
+        sendcmds(connfd, WELCOME_CMDS, client.nickname);
     return;
 }
 
@@ -143,6 +143,6 @@ void Controller::users(Client& client, argv_t& /* argv */) {
         append(RPL::USERS, cli.nickname.c_str(), "-", cli.host);
     }
     free(buf);
-    sendcmds(client.connfd, out);
+    sendcmds(client.connfd, out, client.nickname);
     return;
 }

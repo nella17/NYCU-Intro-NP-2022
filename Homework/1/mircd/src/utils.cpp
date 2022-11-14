@@ -38,15 +38,19 @@ void sendstr(int fd, std::string buf) {
     send(fd, buf.c_str(), buf.size(), SEND_FLAG);
 }
 
-void sendcmd(int fd, CMD_MSG cmd) {
-    sendcmds(fd, { cmd });
+void sendcmd(int fd, CMD_MSG cmd, std::string nick) {
+    sendcmds(fd, { cmd }, nick);
 }
-void sendcmds(int fd, std::vector<CMD_MSG> cmds) {
+void sendcmds(int fd, CMD_MSGS cmds, std::string nick) {
     std::string buf = "";
     for(auto [cmd, msg]: cmds) {
         char tmp[4];
         sprintf(tmp, "%03d", cmd);
         buf.append(tmp);
+        if (!nick.empty()) {
+            buf.append(" ");
+            buf.append(nick);
+        }
         for(auto it = msg.begin(); it != msg.end(); it++) {
             buf.append(" ");
             if (next(it) == msg.end())
