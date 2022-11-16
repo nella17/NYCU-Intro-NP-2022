@@ -28,7 +28,7 @@ const Controller::CmdsMap Controller::cmds{
     { "USER",       { 4, &Controller::user } },
     { "QUIT",       { 0, &Controller::quit } },
     // channel op
-    { "JOIN",       { 0, &Controller::join } },
+    { "JOIN",       { 1, &Controller::join } },
     { "PART",       { 0, &Controller::part } },
     { "TOPIC",      { 0, &Controller::topic } },
     { "NAMES",      { 0, &Controller::names } },
@@ -95,6 +95,16 @@ void Controller::quit(Client& /* client */, const argv_t&& /* argv */) {
 
 // channel op
 void Controller::join(Client& client, const argv_t&& argv) {
+    auto name = argv[0];
+    auto& channel = database.getchannel(name);
+    client.join(channel);
+    channel.add(client);
+    CMD_MSGS out{
+        CMD_MSG{ "JOIN", argv_t{ name } },
+        channel.gettopic()
+    };
+    sendcmds(client.connfd, out, client.nickname);
+    names(client, argv_t{ channel.name });
     return;
 }
 void Controller::part(Client& /* client */, const argv_t&& /* argv */) {
@@ -103,7 +113,17 @@ void Controller::part(Client& /* client */, const argv_t&& /* argv */) {
 void Controller::topic(Client& /* client */, const argv_t&& /* argv */) {
     return;
 }
-void Controller::names(Client& /* client */, const argv_t&& /* argv */) {
+void Controller::names(Client&  client, const argv_t&& argv) {
+    CMD_MSGS out{};
+    if (argv.empty()) {
+        for(auto& [name, channel]: database.channels)
+            out += channel.getusers();
+    } else {
+        auto name = argv[0];
+        auto& channel = database.getchannel(name);
+        out = channel.getusers();
+    }
+    sendcmds(client.connfd, out, client.nickname);
     return;
 }
 void Controller::list(Client& /* client */, const argv_t&& /* argv */) {
@@ -143,6 +163,6 @@ void Controller::users(Client& client, const argv_t&& /* argv */) {
         append(RPL::USERS, cli.nickname.c_str(), "-", cli.host);
     }
     free(buf);
-    sendcmds(client.connfd, out, client.nickname);
+    sendcmds(client.connfd, out);
     return;
 }

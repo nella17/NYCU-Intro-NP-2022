@@ -31,3 +31,7 @@ void Client::changeNick(std::string nick) {
     status |= Client::HAS::NICK;
     nickname = nick;
 }
+
+void Client::join(Channel& channel) {
+    channels.emplace(channel.name, channel);
+}

@@ -31,3 +31,11 @@ char* sock_info(const struct sockaddr_in* sock);
 char* sock_host(const struct sockaddr_in* sock);
 
 argv_t parse(const char* buf, int size);
+
+template<typename T>
+std::vector<T>& operator+=(std::vector<T>& a, const std::vector<T>& b) {
+    a.reserve(a.size() + b.size());
+    for(const auto &x: b)
+        a.emplace_back(x);
+    return a;
+}

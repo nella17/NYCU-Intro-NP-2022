@@ -10,3 +10,10 @@ Client& Database::getuser(int fd) {
 Client& Database::getuser(std::string nick) {
     return nick_mp.find(nick)->second;
 }
+
+Channel& Database::getchannel(std::string name) {
+    auto it = channels.find(name);
+    if (it == channels.end())
+        it = channels.emplace(name, name).first;
+    return it->second;
+}

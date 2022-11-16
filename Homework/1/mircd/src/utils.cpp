@@ -44,11 +44,12 @@ void sendcmd(int fd, CMD_MSG cmd, std::string nick) {
 void sendcmds(int fd, CMD_MSGS cmds, std::string nick) {
     std::string buf = "";
     for(auto [cmd, msg]: cmds) {
+        bool shownick = true;
         if (std::holds_alternative<std::string>(cmd)) {
             buf.append(":");
             if (!nick.empty()) {
                 buf.append(nick);
-                nick.clear();
+                shownick = false;
             }
             buf.append(" ");
             buf.append(std::get<std::string>(cmd));
@@ -59,7 +60,7 @@ void sendcmds(int fd, CMD_MSGS cmds, std::string nick) {
         } else {
             __builtin_unreachable();
         }
-        if (!nick.empty()) {
+        if (shownick and !nick.empty()) {
             buf.append(" ");
             buf.append(nick);
         }

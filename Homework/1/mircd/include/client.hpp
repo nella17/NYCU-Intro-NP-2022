@@ -1,6 +1,11 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
+
+class Client;
+
+#include "channel.hpp"
 
 class Client {
 public:
@@ -16,6 +21,7 @@ public:
     char* const info;
     char* const host;
     std::string nickname, username, hostname, servername, realname;
+    std::unordered_map<std::string, Channel&> channels;
 
     Client(int, char*, char*);
     bool regist();
@@ -24,5 +30,6 @@ public:
     bool hasNick();
 
     void changeNick(std::string);
+    void join(Channel&);
 };
 
