@@ -28,9 +28,10 @@ public:
     bool hasRegist();
     bool canRegist();
     bool hasNick();
-
     void changeNick(std::string);
+
+    bool in(Channel&);
     void join(Channel&);
-    bool part(Channel&);
+    void part(Channel&);
 };
 

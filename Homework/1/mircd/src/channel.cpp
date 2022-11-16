@@ -27,6 +27,12 @@ void Channel::del(Client& client, std::string msg) {
     del(client.connfd, msg);
 }
 
+void Channel::changeTopic(std::string nick, std::string new_topic) {
+    topic = new_topic;
+    for(const auto& [fd, ignore]: users)
+        sendcmd(fd, CMD_MSG{ "TOPIC", argv_t{ name, topic } }, nick);
+}
+
 CMD_MSG Channel::gettopic() {
     if (topic.empty())
         return CMD_MSG{ RPL::NOTOPIC, argv_t{ name, "No topic is set" } };

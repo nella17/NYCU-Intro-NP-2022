@@ -20,6 +20,7 @@ public:
     void add(Client&);
     void del(int, std::string = default_part_msg);
     void del(Client&, std::string = default_part_msg);
+    void changeTopic(std::string, std::string);
 
     CMD_MSG gettopic();
     std::string usersstr();

@@ -30,7 +30,7 @@ const Controller::CmdsMap Controller::cmds{
     // channel op
     { "JOIN",       { 1, &Controller::join } },
     { "PART",       { 1, &Controller::part } },
-    { "TOPIC",      { 0, &Controller::topic } },
+    { "TOPIC",      { 1, &Controller::topic } },
     { "NAMES",      { 0, &Controller::names } },
     { "LIST",       { 0, &Controller::list } },
     // send message
@@ -99,7 +99,7 @@ void Controller::join(Client& client, const argv_t&& argv) {
     auto& channel = database.getchannel(name);
     client.join(channel);
     channel.add(client);
-    sendcmd(client.connfd, channel.gettopic());
+    sendcmd(client.connfd, channel.gettopic(), name);
     names(client, argv_t{ channel.name });
     return;
 }
@@ -108,13 +108,25 @@ void Controller::part(Client& client, const argv_t&& argv) {
     if (!database.hasChannel(name))
         throw CMD_MSG{ ERR::NOSUCHCHANNEL, argv_t{ name, "No such channel" } };
     auto& channel = database.getchannel(name);
-    if (!client.part(channel))
+    if (!client.in(channel))
         throw CMD_MSG{ ERR::NOTONCHANNEL, argv_t{ name, "You're not on that channel" } };
+    client.part(channel);
     auto msg = argv.size() >= 2 ? argv[1] : Channel::default_part_msg;
     channel.del(client, msg);
     return;
 }
-void Controller::topic(Client& /* client */, const argv_t&& /* argv */) {
+void Controller::topic(Client& client, const argv_t&& argv) {
+    auto name = argv[0];
+    if (!database.hasChannel(name))
+        throw CMD_MSG{ ERR::NOSUCHCHANNEL, argv_t{ name, "No such channel" } };
+    auto& channel = database.getchannel(name);
+    if (!client.in(channel))
+        throw CMD_MSG{ ERR::NOTONCHANNEL, argv_t{ name, "You're not on that channel" } };
+    if (argv.size() < 2) {
+        sendcmd(client.connfd, channel.gettopic(), client.nickname);
+    } else {
+        channel.changeTopic(client.nickname, argv[1]);
+    }
     return;
 }
 void Controller::names(Client&  client, const argv_t&& argv) {
