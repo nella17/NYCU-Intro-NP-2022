@@ -1,5 +1,7 @@
 #include "channel.hpp"
 
+const std::string Channel::default_part_msg = "Leave channel";
+
 Channel::Channel(std::string _name):
     name(_name), topic(""), users() {
         if (name.empty() or name.size() > 50 or
@@ -9,13 +11,20 @@ Channel::Channel(std::string _name):
 
 void Channel::add(Client& client) {
     users.emplace(client.connfd, client);
+    auto nick = client.nickname;
+    for(const auto& [fd, ignore]: users)
+        sendcmd(fd, CMD_MSG{ "JOIN", argv_t{ name } }, nick);
 }
 
-void Channel::del(int connfd) {
-    users.erase(connfd);
+void Channel::del(int connfd, std::string msg) {
+    auto it = users.find(connfd);
+    auto nick = it->second.nickname;
+    for(const auto& [fd, ignore]: users)
+        sendcmd(fd, CMD_MSG{ "PART", argv_t{ name, msg } }, nick);
+    users.erase(it);
 }
-void Channel::del(Client& client) {
-    users.erase(client.connfd);
+void Channel::del(Client& client, std::string msg) {
+    del(client.connfd, msg);
 }
 
 CMD_MSG Channel::gettopic() {

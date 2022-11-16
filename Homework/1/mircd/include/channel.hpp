@@ -11,13 +11,15 @@ class Channel;
 class Channel {
 private:
 public:
+    static const std::string default_part_msg;
+
     std::string name, topic;
     std::unordered_map<int, Client&> users;
 
     Channel(std::string);
     void add(Client&);
-    void del(int);
-    void del(Client&);
+    void del(int, std::string = default_part_msg);
+    void del(Client&, std::string = default_part_msg);
 
     CMD_MSG gettopic();
     std::string usersstr();

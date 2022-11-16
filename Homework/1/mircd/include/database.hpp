@@ -18,5 +18,6 @@ public:
     Client& getuser(int);
     Client& getuser(std::string);
 
+    bool hasChannel(std::string);
     Channel& getchannel(std::string);
 };

@@ -11,6 +11,9 @@ Client& Database::getuser(std::string nick) {
     return nick_mp.find(nick)->second;
 }
 
+bool Database::hasChannel(std::string name) {
+    return channels.find(name) != channels.end();
+}
 Channel& Database::getchannel(std::string name) {
     auto it = channels.find(name);
     if (it == channels.end())

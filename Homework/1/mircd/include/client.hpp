@@ -31,5 +31,6 @@ public:
 
     void changeNick(std::string);
     void join(Channel&);
+    bool part(Channel&);
 };
 

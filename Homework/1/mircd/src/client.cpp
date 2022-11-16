@@ -35,3 +35,11 @@ void Client::changeNick(std::string nick) {
 void Client::join(Channel& channel) {
     channels.emplace(channel.name, channel);
 }
+
+bool Client::part(Channel& channel) {
+    auto it = channels.find(channel.name);
+    if (it == channels.end())
+        return false;
+    channels.erase(it);
+    return true;
+}
