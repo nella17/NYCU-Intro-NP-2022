@@ -164,6 +164,18 @@ void Controller::list(Client& client, const argv_t&& argv) {
 
 // send message
 void Controller::privmsg(Client& client, const argv_t&& argv) {
+    if (argv.size() < 1)
+        throw CMD_MSG{ ERR::NORECIPIENT, argv_t{ "No recipient given (PRIVMSG)" } };
+    if (argv.size() < 2)
+        throw CMD_MSG{ ERR::NOTEXTTOSEND, argv_t{ "No text to send" } };
+    auto name = argv[0], text = argv[1];
+    // TODO: send to user
+    if (!database.hasChannel(name))
+        throw CMD_MSG{ ERR::NOSUCHNICK, argv_t{ name, "No such nick/channel" } };
+    auto& channel = database.getchannel(name);
+    for(auto [fd,user]: channel.users)
+        if (fd != client.connfd)
+            sendcmd(fd, CMD_MSG{ "PRIVMSG", argv_t{ name, text } }, client.nickname);
     return;
 }
 
