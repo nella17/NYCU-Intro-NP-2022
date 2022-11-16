@@ -142,7 +142,23 @@ void Controller::names(Client&  client, const argv_t&& argv) {
     sendcmds(client.connfd, out, client.nickname);
     return;
 }
-void Controller::list(Client& /* client */, const argv_t&& /* argv */) {
+void Controller::list(Client& client, const argv_t&& argv) {
+    std::vector<std::string> channels{};
+    if (argv.size() > 0) {
+        channels.emplace_back(argv[0]);
+    } else {
+        for(auto [name, channel]: database.channels)
+            channels.emplace_back(name);
+    }
+    CMD_MSGS out{};
+    for(auto name: channels) if (database.hasChannel(name)) { 
+        auto& channel = database.getchannel(name);
+        out.emplace_back(RPL::LIST, argv_t{
+            channel.name, std::to_string(channel.users.size()), channel.topic
+        });
+    }
+    out.emplace_back(RPL::LISTEND, argv_t{ "End of LIST" } );
+    sendcmds(client.connfd, out, client.nickname);
     return;
 }
 
@@ -161,17 +177,15 @@ void Controller::ping(Client& client, const argv_t&& argv) {
 
 // optional
 void Controller::users(Client& client, const argv_t&& /* argv */) {
-	int mxname = 6; // 123.123.123.123 -> 11 char
-	for(auto [fd, cli]: database.clients) {
-		int len = cli.nickname.size();
-		if (len > mxname) mxname = len;
-	}
-    int size = mxname + 1 + 8 + 1 + 11 + 1;
+	size_t mxname = 6; // 123.123.123.123 -> 11 char
+	for(auto [fd, cli]: database.clients)
+		mxname = std::max(mxname, cli.nickname.size());
+    size_t size = mxname + 1 + 8 + 1 + 11 + 1;
     auto buf = new char[size];
     CMD_MSGS out{};
     out.reserve(database.clients.size()+1);
     auto append = [&](int cmd, const char* name, const char* term, const char* host) {
-		sprintf(buf, "%-*s %-8s %-21s", mxname, name, term, host);
+		sprintf(buf, "%-*s %-8s %-21s", (int)mxname, name, term, host);
         out.emplace_back(cmd, argv_t{ buf });
     };
     append(RPL::USERSSTART, "UserID", "Terminal", "Host");
