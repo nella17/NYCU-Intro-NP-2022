@@ -151,6 +151,8 @@ void Controller::list(Client& client, const argv_t&& argv) {
             channels.emplace_back(name);
     }
     CMD_MSGS out{};
+    out.reserve(channels.size()+2);
+    out.emplace_back(RPL::LISTSTART, argv_t{ "Channel :Users  Name" });
     for(auto name: channels) if (database.hasChannel(name)) { 
         auto& channel = database.getchannel(name);
         out.emplace_back(RPL::LIST, argv_t{
