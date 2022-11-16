@@ -22,5 +22,7 @@ public:
     bool hasRegist();
     bool canRegist();
     bool hasNick();
+
+    void changeNick(std::string);
 };
 

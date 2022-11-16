@@ -26,6 +26,7 @@ enum ERR {
     NOTEXTTOSEND        = 412,
     UNKNOWNCOMMAND      = 421,
     NONICKNAMEGIVEN     = 431,
+    ERRONEUSNICKNAME    = 432,
     NICKCOLLISION       = 436,
     NOTONCHANNEL        = 442,
     NOTREGISTERED       = 451,

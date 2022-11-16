@@ -76,8 +76,7 @@ void Controller::nick(Client& client, const argv_t&& argv) {
     if (client.hasNick())
         database.nick_mp.erase(client.nickname);
     database.nick_mp.emplace(nickname, client);
-    client.status |= Client::HAS::NICK;
-    client.nickname = nickname;
+    client.changeNick(nickname);
     return;
 }
 void Controller::user(Client& client, const argv_t&& argv) {

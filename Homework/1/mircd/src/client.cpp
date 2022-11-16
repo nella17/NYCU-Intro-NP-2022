@@ -22,3 +22,12 @@ bool Client::canRegist() {
 bool Client::hasNick() {
     return (status & HAS::NICK) == HAS::NICK;
 }
+
+void Client::changeNick(std::string nick) {
+    if (nick.empty() or !(bool)isalpha(nick[0]))
+        throw CMD_MSG{ ERR::ERRONEUSNICKNAME, argv_t{ nick, "Erroneous nickname" } };
+    if (hasNick())
+        sendcmd(connfd, CMD_MSG{ "NICK", argv_t{ nick } }, nickname);
+    status |= Client::HAS::NICK;
+    nickname = nick;
+}
