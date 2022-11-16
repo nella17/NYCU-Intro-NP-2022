@@ -56,7 +56,7 @@ Additional remarks for the commands listed above are summarized as follows. Thes
 
 - `JOIN` a channel is always a success. If the channel does not exist, your server should automatically create the channel.
 
-- For successful `JOIN` and `PART` commands, the server must respond `:<nickname> <the command & params received from the server>` first, followed by the rest of the responses.
+- For successful `JOIN` and `PART` commands, the server must respond `:<nickname> <the command & params received from the client>` first, followed by the rest of the responses.
 
 - `PRIVMSG` can be only used to send messages into a channel in our implementation. You do not have to implement sending a message to a user privately.
 :::
@@ -225,14 +225,14 @@ We use `nc` command to connect server to test error, you need to use NICK and US
 nc localhost 10004            //connect to your server
 
 NICK Kilac            
-USER Kilac localhost test kilac
+USER Kilac localhost test :kilac
     <<success connect>>
 JOIN #hehe            //These arguments can set by yourself
 ```
     
 1. (401) ERR_NOSUCHNICK
     ```
-    PRIVMSG #cool hello            // cool doesn't exist 
+    PRIVMSG #cool :hello            // cool doesn't exist 
     :mircd 401 Kilac #cool :No such nick/channel
     ```
 1. (403) ERR_NOSUCHCHANNEL
