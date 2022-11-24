@@ -211,7 +211,7 @@ int main() {
 	setvbuf(stdout, NULL, _IONBF, 0);
 	setvbuf(stderr, NULL, _IONBF, 0);
 
-	if(pow() < 0) _exit(-1);
+	// if(pow() < 0) _exit(-1);
 
 	for(i = 0; i < WORKERS; i++) (new thread(worker, i))->detach();
 
