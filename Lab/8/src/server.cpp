@@ -31,7 +31,7 @@ void do_reponse(int sock, struct sockaddr_in* cin, struct response_hdr_t* hdr) {
         printf("[*] Sending response to %s:%d, seq=%d, flag=%d\n", inet_ntoa(cin->sin_addr), ntohs(cin->sin_port), hdr->data_seq, hdr->flag);
     }
     for (int i = 0; i < 4; ++i) {
-        if(sendto(sock, (const void *) hdr, sizeof(struct response_hdr_t), 0, (struct sockaddr*) cin, sizeof(sockaddr_in)) < 0) {
+        if(sendto(sock, (const void *) hdr, sizeof(struct response_hdr_t), MSG_DONTWAIT, (struct sockaddr*) cin, sizeof(sockaddr_in)) < 0) {
             fail("sendto");
         }
     }

@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
             wrap_send(sess_id, 0, connfd, &init, sizeof(init));
         }
         response_hdr_t res;
-        while (recv(connfd, &res, sizeof(res), 0) == sizeof(res)) {
+        while (recv(connfd, &res, sizeof(res), MSG_DONTWAIT) == sizeof(res)) {
             if (res.flag_check ^ RES_MAGIC ^ res.flag)
                 continue;
             if (res.flag & RES_ACK) {
