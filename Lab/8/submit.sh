@@ -1,5 +1,6 @@
 #!/bin/bash
-g++ -static src/server.cpp -o bin/server.exe &
-g++ -static src/client.cpp -o bin/client.exe &
+set -ex
+g++ -static src/server.cpp -o bin/server.static.exe &
+g++ -static src/client.cpp -o bin/client.static.exe &
 wait
-python submit.py bin/server.exe bin/client.exe ${TOKEN?"TOKEN"}
+python submit.py bin/server.static.exe bin/client.static.exe ${TOKEN?"TOKEN"}

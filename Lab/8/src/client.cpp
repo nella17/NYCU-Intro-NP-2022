@@ -50,8 +50,8 @@ inline void wrap_send(uint32_t seq, int sockfd, const void* buf, size_t len) {
     memcpy(hdr.data, buf, len);
     hdr.checksum = adler32(hdr.data, DATA_SIZE);
     // dump_sender_hdr(&hdr);
-    for(int i = 0; i < 10; i++)
-        send(sockfd, &hdr, PACKET_SIZE, 0);
+    for(int i = 0; i < 3; i++)
+        send(sockfd, &hdr, PACKET_SIZE, MSG_DONTWAIT);
 }
 
 int main(int argc, char *argv[]) {
@@ -59,6 +59,8 @@ int main(int argc, char *argv[]) {
         return -fprintf(stderr, "Usage: %s <path-to-read-files> <total-number-of-files> <port> <server-ip-address>", argv[0]);
 
     setvbufs();
+    signal(SIGCHLD, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);
 
     char* path = argv[1];
     uint32_t total = (uint32_t)atoi(argv[2]);
@@ -79,10 +81,12 @@ int main(int argc, char *argv[]) {
         lseek(filefd, 0, SEEK_SET);
         read(filefd, file.data, file.size);
         close(filefd);
-        fprintf(stderr, "read '%s' (%d bytes)\n", filename, file.size);
+        fprintf(stderr, "[cli] read '%s' (%d bytes)\n", filename, file.size);
     }
 
     int connfd = connect(ip, port);
+    set_sock_timeout(connfd);
+
     for(auto &file: files) {
         init_t init {
             .filename = file.filename,
@@ -95,33 +99,45 @@ int main(int argc, char *argv[]) {
                 continue;
             if (res.flag_check ^ RES_MAGIC ^ res.flag)
                 continue;
-            if (res.flag & RES_ACK) break;
+            if (res.flag & RES_ACK)
+                if (res.data_seq == 0) break;
             if (res.flag & RES_MALFORM) continue;
         }
 
-        fprintf(stderr, "sent init for '%06d' (%d bytes)\n", file.filename, file.size);
+        fprintf(stderr, "[cli] sent init for '%06d' (%d bytes)\n", file.filename, file.size);
 
-        size_t offset = 0;
-        std::set<size_t> remaining{};
+        std::set<uint32_t> remaining{};
         for(size_t i = 0; i * DATA_SIZE < file.size; i++)
             remaining.emplace(i+1);
 
-        /*
-        while (!remaining.empty()) {
+        bool done = false;
+        while (remaining.size() or !done) {
             for(auto seq: remaining) {
-                wrap_send(seq, connfd, file.data + (seq-1) * DATA_SIZE, DATA_SIZE);
+                size_t off = (seq-1) * DATA_SIZE;
+                size_t len = std::min(DATA_SIZE, file.size - off);
+                wrap_send(seq, connfd, file.data + off, len);
             }
-            wrap_send(seq, connfd, file.data + (seq-1) * DATA_SIZE, DATA_SIZE);
+
             response_hdr_t res;
-            if (recv(connfd, &res, sizeof(res), 0) != sizeof(res))
-                continue;
-            if (res.flag_check ^ RES_MAGIC ^ res.flag)
-                continue;
-            if (res.flag & RES_ACK) continue;
-            if (res.flag & RES_MALFORM) continue;
-            if (res.flag & RES_FIN) break;
+            while (recv(connfd, &res, sizeof(res), 0) == sizeof(res)) {
+                if (res.flag_check ^ RES_MAGIC ^ res.flag)
+                    continue;
+                if (res.flag & RES_ACK) {
+                    remaining.erase(res.data_seq);
+                    continue;
+                }
+                if (res.flag & RES_MALFORM) {
+                    remaining.emplace(res.data_seq);
+                    continue;
+                }
+                if (res.flag & RES_FIN) {
+                    done = true;
+                    break;
+                }
+            }
         }
-        */
+
+        fprintf(stderr, "[cli] sent done for '%06d' (%d bytes)\n", file.filename, file.size);
     }
 
 }
