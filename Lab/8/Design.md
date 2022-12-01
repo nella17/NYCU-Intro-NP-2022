@@ -3,17 +3,17 @@
 
 ### Initialize connection
 ```
-| Data Sequence = 0 (4) | Data Checksum (alder32) (hdr no included) | filename (4) | file size (4) |
+| Session ID (2) | Data Sequence = 0 (2) | Data Checksum (alder32) (hdr no included) | filename (4) | file size (4) |
 ```
 
 - Steps
-    - Sender send this packet
+    - Sender send initialization request
     - Receiver send back a ACK response with `sequence no. = 0`
-    - Sender start sending data using sender transfer format
+    - Sender start sending data using `sender transfer` format
 
 ### Sender Transfer
 ```
-| Data Sequence (4) | Data Checksum (alder32) (hdr no included) | Data |
+| Session ID (2) | Data Sequence (2) | Data Checksum (alder32) (hdr no included) | Data |
 ```
 
 - Sending timeout

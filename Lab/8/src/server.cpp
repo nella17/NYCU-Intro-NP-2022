@@ -17,22 +17,28 @@
 #include "util.hpp"
 
 
+struct session_t {
+    init_t file_metadata;
+    uint32_t received_bytes = 0;
+    bool is_complete = false;
+};
+
 void do_reponse(int sock, struct sockaddr_in* cin, struct response_hdr_t* hdr) {
     hdr->flag_check = hdr->flag ^ RES_MAGIC;
-
     cin->sin_family = AF_INET;
 
     printf("[*] Sending response to %s:%d, seq=%d, flag=%d\n", inet_ntoa(cin->sin_addr), ntohs(cin->sin_port), hdr->data_seq, hdr->flag);
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 4; ++i) {
         if(sendto(sock, (const void *) hdr, sizeof(struct response_hdr_t), 0, (struct sockaddr*) cin, sizeof(sockaddr_in)) < 0) {
             fail("sendto");
         }
     }
 }
 
-void reponse_malformed(int sock, uint32_t seq, struct sockaddr_in* cin) {
+void reponse_malformed(int sock, uint16_t sess_id, uint16_t seq_id, struct sockaddr_in* cin) {
     struct response_hdr_t hdr;
-    hdr.data_seq = seq;
+    hdr.sess_id = sess_id;
+    hdr.data_seq = seq_id;
     hdr.flag = RES_MALFORM;
     hdr.flag_check = hdr.flag ^ RES_MAGIC;
     do_reponse(sock, cin, &hdr);
@@ -53,13 +59,48 @@ sender_hdr_t* recv_sender_data(int sock, struct sockaddr_in* cin) {
     }
 
     // perform checksum
-    if (buf->checksum != adler32(buf->data, DATA_SIZE)) {
+    if (buf->checksum != checksum(buf)) {
         dump_sender_hdr((sender_hdr_t*) buf);
-        reponse_malformed(sock, buf->data_seq, cin);
+        reponse_malformed(sock, buf->sess_id, buf->data_seq, cin);
         return NULL;
     }
 
     return (sender_hdr_t*) buf;
+}
+
+void save_to_file(char* filename, uint32_t filesize, std::map<uint32_t, char*> data) {
+    int fp = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fp == -1) {
+        fail("open");
+    }
+
+    // // dump map
+    // for (auto it = data.begin(); it != data.end(); ++it) {
+    //     printf("[Chunk %d] ", it->first);
+    //     for (int i = 0; i < PACKET_SIZE; ++i) {
+    //         printf("%02x ", (uint8_t)it->second[i]);
+    //     }
+    // }
+    // printf("\n");
+
+    size_t last_block_size = filesize % DATA_SIZE;
+    if (last_block_size == 0) {
+        last_block_size = DATA_SIZE;
+    }
+    for(auto it = data.begin(); it != data.end(); it++) {
+        auto data_frag = it->second;
+        if (it->first) {
+            if (next(it) == data.end()) {  // last chunk of data
+                write(fp, data_frag, last_block_size);
+            } else {
+                write(fp, data_frag, DATA_SIZE);
+            }
+        }
+        free(data_frag);
+    }
+
+    data.clear();
+    close(fp);
 }
 
 int main(int argc, char *argv[]) {
@@ -83,103 +124,107 @@ int main(int argc, char *argv[]) {
         fail("bind");
     }
 
-    for (int file_id = 0; file_id < NUM_FILES; ++file_id) {
+    std::map<uint16_t, session_t*> session_map;
+    std::map<uint16_t, std::map<uint32_t, char*>> data_map;
+    int completed_files = 0;
+    while (completed_files != NUM_FILES) {
         struct sockaddr_in csin;
         bzero(&csin, sizeof(csin));
-        bool is_init = 0;
         std::map<uint32_t, char*> data;
-
-        // connection initiation
         response_hdr_t response;
-        init_t file_metadata;
-        while (!is_init) {
-            sender_hdr_t* recv_hdr = recv_sender_data(s, &csin);
 
-            if (recv_hdr == NULL) {
-                continue;
-            }
+        sender_hdr_t* recv_hdr = recv_sender_data(s, &csin);
+        if (recv_hdr == NULL) {
+            continue;
+        }
 
-            if (recv_hdr->data_seq != 0) {
-                reponse_malformed(s, 0, &csin);
-                continue;
-            }
+        // session initialization
+        if (recv_hdr->data_seq == 0) {
+            // create a new session
+            session_t* session = (session_t*) malloc(sizeof(session_t));
+            memcpy(&session->file_metadata, recv_hdr->data, sizeof(init_t));
+            session_map[recv_hdr->sess_id] = session;
 
-            memcpy(&file_metadata, recv_hdr->data, sizeof(init_t));
-
-            printf("[/] [FN:%d][DN=0] Received connection initiation from %s:%d\n", file_id, inet_ntoa(csin.sin_addr), ntohs(csin.sin_port));
-            printf("[/] [FN:%d][DN=0] filename: %d\n", file_id, file_metadata.filename);
-            printf("[/] [FN:%d][DN=0] total size: %d\n", file_id, file_metadata.filesize);
+            printf("[/] [SessID:%d][ChunkID=0] Received connection initiation from %s:%d\n", recv_hdr->sess_id, inet_ntoa(csin.sin_addr), ntohs(csin.sin_port));
+            printf("[/] [SessID:%d][ChunkID=0] filename: %d\n", recv_hdr->sess_id, session->file_metadata.filename);
+            printf("[/] [SessID:%d][ChunkID=0] total size: %d\n", recv_hdr->sess_id, session->file_metadata.filesize);
 
             // send a ACK to the client
+            response.sess_id = recv_hdr->sess_id;
             response.data_seq = 0;
             response.flag = RES_ACK;
             do_reponse(s, &csin, &response);
 
-            is_init = 1;
             free(recv_hdr);
+            continue;
         }
 
-        // TODO: recv file
-        u_int32_t recved_size = 0;
-        while (recved_size < file_metadata.filesize) {
-            sender_hdr_t* recv_hdr = recv_sender_data(s, &csin);
+        // if the session is not initialized, send a RST
+        if (session_map.find(recv_hdr->sess_id) == session_map.end()) {
+            printf("[/] [SessID:%d][ChunkID=%d] Session not initialized, sending RST\n", recv_hdr->sess_id, recv_hdr->data_seq);
+            response.sess_id = recv_hdr->sess_id;
+            response.data_seq = recv_hdr->data_seq;
+            response.flag = RES_RST;
+            do_reponse(s, &csin, &response);
 
-            if (recv_hdr == NULL) {
-                continue;
-            }
+            free(recv_hdr);
+            continue;
+        }
 
-            printf("[/] [FN:%d][DN=%d] Received data from %s:%d\n", file_id, recv_hdr->data_seq, inet_ntoa(csin.sin_addr), ntohs(csin.sin_port));
+        // If the connection is already initiated, receive the data chunks
+        uint16_t sess_id = recv_hdr->sess_id;
+        auto session = session_map[sess_id];
+        if (session->received_bytes < session->file_metadata.filesize) {
+            // save the data chunk
+            printf("[/] [SessID:%d][ChunkID=%d] [FZ=%d/%d] Received data chunk from %s:%d\n",
+                recv_hdr->sess_id,
+                recv_hdr->data_seq,
+                session->received_bytes,
+                session->file_metadata.filesize,
+                inet_ntoa(csin.sin_addr),
+                ntohs(csin.sin_port));
 
             // send a ACK to the client
+            response.sess_id = recv_hdr->sess_id;
             response.data_seq = recv_hdr->data_seq;
             response.flag = RES_ACK;
             do_reponse(s, &csin, &response);
 
-            char* data_frag = (char*) malloc(DATA_SIZE);
-            memcpy(data_frag, recv_hdr->data, DATA_SIZE);
-            if (recv_hdr->data_seq && data.find(recv_hdr->data_seq) == data.end()) {
-                data[recv_hdr->data_seq] = data_frag;
-                recved_size += DATA_SIZE;
+            auto &mp = data_map[recv_hdr->sess_id];
+            if (recv_hdr->data_seq && mp.find(recv_hdr->data_seq) == mp.end()) {
+                char* data_frag = (char*) malloc(DATA_SIZE);
+                memcpy(data_frag, recv_hdr->data, DATA_SIZE);
+                mp[recv_hdr->data_seq] = data_frag;
+                session->received_bytes += DATA_SIZE;
             }
-
-            free(recv_hdr);
         }
 
-        // All data recvived, send FIN
-        response.data_seq = 0;
-        response.flag = RES_FIN;
-        do_reponse(s, &csin, &response);
+        // check is the last received is the last chunk of data
+        if (!session->is_complete && session->received_bytes >= session->file_metadata.filesize) {
+            // All data recvived, send FIN
+            printf("[/] [SessID:%d][ChunkID=%d] Received all data, sending FIN\n", recv_hdr->sess_id, recv_hdr->data_seq);
+            response.sess_id = recv_hdr->sess_id;
+            response.data_seq = 0;
+            response.flag = RES_FIN;
+            do_reponse(s, &csin, &response);
 
-        // dump map
-        printf("[/] [FN:%d] Dumping data map\n", file_id);
-        for (auto it = data.begin(); it != data.end(); ++it) {
-            printf("[/] [FN:%d][DN=%d] ", file_id, it->first);
-            for (size_t i = 0; i < DATA_SIZE; ++i) {
-                printf("%02x", ((uint8_t*)it->second)[i]);
-            }
-            printf("\n");
+            init_t* file_metadata = &session->file_metadata;
+            char* filename = (char*) malloc(100);
+            sprintf(filename, "%s/%06d", argv[1], file_metadata->filename);
+            printf("[/] [SessID:%d][ChunkID=%d] File saved to %s\n", recv_hdr->sess_id, recv_hdr->data_seq, filename);
+            save_to_file(filename, file_metadata->filesize, data_map[sess_id]);
+
+            session->is_complete = true;
+            completed_files++;
+            free(filename);
+        } else if (session->is_complete) {
+            response.sess_id = recv_hdr->sess_id;
+            response.data_seq = 0;
+            response.flag = RES_FIN;
+            do_reponse(s, &csin, &response);
         }
-        printf("\n");
 
-        // truncate the file to the right size
-        char* filename = (char*) malloc(100);
-        size_t last_block_size = file_metadata.filesize % DATA_SIZE;
-        last_block_size = (last_block_size == 0) ? DATA_SIZE : last_block_size;
-
-        sprintf(filename, "%s/%06d", argv[1], file_metadata.filename);
-        int fp = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0777);
-        for(auto it = data.begin(); it != data.end(); it++) {
-            auto data_frag = it->second;
-            if (it->first) {
-                if (next(it) == data.end()) {  // last chunk of data
-                    write(fp, data_frag, last_block_size);
-                } else {
-                    write(fp, data_frag, DATA_SIZE);
-                }
-            }
-            free(data_frag);
-        }
-        close(fp);
+        free(recv_hdr);
     }
     close(s);
 }
