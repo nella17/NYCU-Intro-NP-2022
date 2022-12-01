@@ -54,7 +54,7 @@ inline void wrap_send(uint16_t sess_id, uint16_t seq, int sockfd, const void* bu
     memcpy(hdr.data, buf, len);
     hdr.checksum = checksum(&hdr);
     // dump_sender_hdr(&hdr);
-    for(int i = 0; i < 3; i++)
+    // for(int i = 0; i < 3; i++)
         send(sockfd, &hdr, PACKET_SIZE, MSG_DONTWAIT);
 }
 
@@ -107,6 +107,7 @@ int main(int argc, char *argv[]) {
 
     auto wait_sess_ids(sess_ids);
     while (!wait_sess_ids.empty()) {
+        fprintf(stderr, "[cli] %lu sess_id left\n", wait_sess_ids.size());
         for (auto [sess_id, idx] : wait_sess_ids) {
             auto &file = files[idx];
             init_t init {
@@ -116,7 +117,7 @@ int main(int argc, char *argv[]) {
             wrap_send(sess_id, 0, connfd, &init, sizeof(init));
         }
         response_hdr_t res;
-        while (recv(connfd, &res, sizeof(res), MSG_DONTWAIT) == sizeof(res)) {
+        while (recv(connfd, &res, sizeof(res), 0) == sizeof(res)) {
             if (res.flag_check ^ RES_MAGIC ^ res.flag)
                 continue;
             if (res.flag & RES_ACK) {

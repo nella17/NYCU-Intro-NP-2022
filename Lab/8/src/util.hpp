@@ -64,7 +64,7 @@ inline void dump_sender_hdr(const struct sender_hdr_t* hdr) {
 inline void set_sock_timeout(int sockfd) {
     struct timeval tv;
     tv.tv_sec = 0;
-    tv.tv_usec = 250 * 1000;
+    tv.tv_usec = 200 * 1000;
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
         fail("setsockopt(SO_RCVTIMEO)");
 }
