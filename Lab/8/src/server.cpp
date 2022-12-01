@@ -24,11 +24,11 @@ struct session_t {
 };
 
 void do_reponse(int sock, struct sockaddr_in* cin, struct response_hdr_t* hdr) {
-    hdr->flag_check = hdr->flag ^ RES_MAGIC;
+    hdr->checksum = checksum(hdr);
     cin->sin_family = AF_INET;
 
     if (DEBUG) {
-        printf("[*] Sending response to %s:%d, seq=%d, flag=%d\n", inet_ntoa(cin->sin_addr), ntohs(cin->sin_port), hdr->data_seq, hdr->flag);
+        printf("[*] Sending response to %s:%d, seq=%d, flag=%d\n", inet_ntoa(cin->sin_addr), ntohs(cin->sin_port), hdr->sess_seq.seq, hdr->flag);
     }
     for (int i = 0; i < 4; ++i) {
         if(sendto(sock, (const void *) hdr, sizeof(struct response_hdr_t), 0, (struct sockaddr*) cin, sizeof(sockaddr_in)) < 0) {
@@ -39,10 +39,11 @@ void do_reponse(int sock, struct sockaddr_in* cin, struct response_hdr_t* hdr) {
 
 void reponse_malformed(int sock, uint16_t sess_id, uint16_t seq_id, struct sockaddr_in* cin) {
     struct response_hdr_t hdr;
-    hdr.sess_id = sess_id;
-    hdr.data_seq = seq_id;
+    hdr.sess_seq = {
+        .sess = sess_id,
+        .seq  = seq_id,
+    };
     hdr.flag = RES_MALFORM;
-    hdr.flag_check = hdr.flag ^ RES_MAGIC;
     do_reponse(sock, cin, &hdr);
 }
 
@@ -52,22 +53,22 @@ void reponse_malformed(int sock, uint16_t sess_id, uint16_t seq_id, struct socka
  * @return sender_hdr_t* if the packet is valid, NULL otherwise
  */
 sender_hdr_t* recv_sender_data(int sock, struct sockaddr_in* cin) {
-    sender_hdr_t* buf = (sender_hdr_t*) malloc(PACKET_SIZE);
-    bzero(buf, PACKET_SIZE);
+    sender_hdr_t* hdr = (sender_hdr_t*) malloc(PACKET_SIZE);
+    bzero(hdr, PACKET_SIZE);
     socklen_t len = sizeof(&cin);
 
-    if(recvfrom(sock, (void *) buf, PACKET_SIZE, 0, (struct sockaddr*) cin, &len) < 0) {
+    if(recvfrom(sock, (void *) hdr, PACKET_SIZE, 0, (struct sockaddr*) cin, &len) < 0) {
         fail("recvfrom");
     }
 
     // perform checksum
-    if (buf->checksum != checksum(buf)) {
-        dump_sender_hdr((sender_hdr_t*) buf);
-        reponse_malformed(sock, buf->sess_id, buf->data_seq, cin);
+    if (hdr->checksum != checksum(hdr)) {
+        dump_sender_hdr(hdr);
+        reponse_malformed(sock, hdr->sess_seq.sess, hdr->sess_seq.seq, cin);
         return NULL;
     }
 
-    return (sender_hdr_t*) buf;
+    return hdr;
 }
 
 void save_to_file(char* filename, uint32_t filesize, std::map<uint32_t, char*> data) {
@@ -141,19 +142,20 @@ int main(int argc, char *argv[]) {
         }
 
         // session initialization
-        if (recv_hdr->data_seq == 0) {
+        auto sess_id = recv_hdr->sess_seq.sess;
+        auto data_seq = recv_hdr->sess_seq.seq;
+        if (data_seq == 0) {
             // create a new session
             session_t* session = (session_t*) malloc(sizeof(session_t));
             memcpy(&session->file_metadata, recv_hdr->data, sizeof(init_t));
-            session_map[recv_hdr->sess_id] = session;
+            session_map[sess_id] = session;
 
-            printf("[/] [SessID:%d][ChunkID=0] Received connection initiation from %s:%d\n", recv_hdr->sess_id, inet_ntoa(csin.sin_addr), ntohs(csin.sin_port));
-            printf("[/] [SessID:%d][ChunkID=0] filename: %d\n", recv_hdr->sess_id, session->file_metadata.filename);
-            printf("[/] [SessID:%d][ChunkID=0] total size: %d\n", recv_hdr->sess_id, session->file_metadata.filesize);
+            printf("[/] [SessID:%d][ChunkID=0] Received connection initiation from %s:%d\n", sess_id, inet_ntoa(csin.sin_addr), ntohs(csin.sin_port));
+            printf("[/] [SessID:%d][ChunkID=0] filename: %d\n", sess_id, session->file_metadata.filename);
+            printf("[/] [SessID:%d][ChunkID=0] total size: %d\n", sess_id, session->file_metadata.filesize);
 
             // send a ACK to the client
-            response.sess_id = recv_hdr->sess_id;
-            response.data_seq = 0;
+            response.sess_seq = recv_hdr->sess_seq;
             response.flag = RES_ACK;
             do_reponse(s, &csin, &response);
 
@@ -162,10 +164,9 @@ int main(int argc, char *argv[]) {
         }
 
         // if the session is not initialized, send a RST
-        if (session_map.find(recv_hdr->sess_id) == session_map.end()) {
-            printf("[/] [SessID:%d][ChunkID=%d] Session not initialized, sending RST\n", recv_hdr->sess_id, recv_hdr->data_seq);
-            response.sess_id = recv_hdr->sess_id;
-            response.data_seq = recv_hdr->data_seq;
+        if (session_map.find(sess_id) == session_map.end()) {
+            printf("[/] [SessID:%d][ChunkID=%d] Session not initialized, sending RST\n", sess_id, data_seq);
+            response.sess_seq = recv_hdr->sess_seq;
             response.flag = RES_RST;
             do_reponse(s, &csin, &response);
 
@@ -174,14 +175,13 @@ int main(int argc, char *argv[]) {
         }
 
         // If the connection is already initiated, receive the data chunks
-        uint16_t sess_id = recv_hdr->sess_id;
         auto session = session_map[sess_id];
         if (session->received_bytes < session->file_metadata.filesize) {
             // save the data chunk
             if (DEBUG) {
                 printf("[/] [SessID:%d][ChunkID=%d] [FZ=%d/%d] Received data chunk from %s:%d\n",
-                    recv_hdr->sess_id,
-                    recv_hdr->data_seq,
+                    sess_id,
+                    data_seq,
                     session->received_bytes,
                     session->file_metadata.filesize,
                     inet_ntoa(csin.sin_addr),
@@ -189,16 +189,15 @@ int main(int argc, char *argv[]) {
             }
 
             // send a ACK to the client
-            response.sess_id = recv_hdr->sess_id;
-            response.data_seq = recv_hdr->data_seq;
+            response.sess_seq = recv_hdr->sess_seq;
             response.flag = RES_ACK;
             do_reponse(s, &csin, &response);
 
-            auto &mp = data_map[recv_hdr->sess_id];
-            if (recv_hdr->data_seq && mp.find(recv_hdr->data_seq) == mp.end()) {
+            auto &mp = data_map[sess_id];
+            if (data_seq && mp.find(data_seq) == mp.end()) {
                 char* data_frag = (char*) malloc(DATA_SIZE);
                 memcpy(data_frag, recv_hdr->data, DATA_SIZE);
-                mp[recv_hdr->data_seq] = data_frag;
+                mp[data_seq] = data_frag;
                 session->received_bytes += DATA_SIZE;
             }
         }
@@ -206,24 +205,28 @@ int main(int argc, char *argv[]) {
         // check is the last received is the last chunk of data
         if (!session->is_complete && session->received_bytes >= session->file_metadata.filesize) {
             // All data recvived, send FIN
-            printf("[/] [SessID:%d][ChunkID=%d] Received all data, sending FIN\n", recv_hdr->sess_id, recv_hdr->data_seq);
-            response.sess_id = recv_hdr->sess_id;
-            response.data_seq = 0;
+            printf("[/] [SessID:%d][ChunkID=%d] Received all data, sending FIN\n", sess_id, data_seq);
+            response.sess_seq = {
+                .sess = sess_id,
+                .seq = 0
+            };
             response.flag = RES_FIN;
             do_reponse(s, &csin, &response);
 
             init_t* file_metadata = &session->file_metadata;
             char* filename = (char*) malloc(100);
             sprintf(filename, "%s/%06d", argv[1], file_metadata->filename);
-            printf("[/] [SessID:%d][ChunkID=%d] File saved to %s\n", recv_hdr->sess_id, recv_hdr->data_seq, filename);
+            printf("[/] [SessID:%d][ChunkID=%d] File saved to %s\n", sess_id, data_seq, filename);
             save_to_file(filename, file_metadata->filesize, data_map[sess_id]);
 
             session->is_complete = true;
             completed_files++;
             free(filename);
         } else if (session->is_complete) {
-            response.sess_id = recv_hdr->sess_id;
-            response.data_seq = 0;
+            response.sess_seq = {
+                .sess = sess_id,
+                .seq = 0
+            };
             response.flag = RES_FIN;
             do_reponse(s, &csin, &response);
         }

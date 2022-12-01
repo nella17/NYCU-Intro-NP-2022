@@ -25,18 +25,28 @@ struct init_t {
     uint32_t filesize;
 };
 
+union sess_seq_u {
+    uint32_t id;
+    struct {
+        uint16_t sess;
+        uint16_t seq;
+    };
+    bool operator<(const sess_seq_u &rhs) const {
+        return id < rhs.id;
+    }
+
+};
+
 constexpr size_t DATA_SIZE = 1400;
 struct sender_hdr_t {
-    uint16_t sess_id;
-    uint16_t data_seq;
+    sess_seq_u sess_seq;
     uint32_t checksum;
     char     data[DATA_SIZE];
 };
 constexpr size_t PACKET_SIZE = sizeof(sender_hdr_t);
 
 struct response_hdr_t {
-    uint16_t sess_id;
-    uint16_t data_seq;
-    uint32_t flag_check;
+    sess_seq_u sess_seq;
+    uint32_t checksum;
     uint32_t flag;
 };

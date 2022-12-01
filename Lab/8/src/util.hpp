@@ -46,12 +46,16 @@ inline uint32_t adler32(const void *_data, size_t len)
 
 inline uint32_t checksum(const sender_hdr_t* hdr) {
     uint32_t value = adler32(hdr->data, DATA_SIZE);
-    return value ^ hdr->data_seq ^ hdr->sess_id;
+    return value ^ hdr->sess_seq.id;
+}
+
+inline uint32_t checksum(const response_hdr_t* hdr) {
+    return hdr->sess_seq.id ^ hdr->flag ^ RES_MAGIC;
 }
 
 inline void dump_sender_hdr(const struct sender_hdr_t* hdr) {
     fprintf(stderr, "[*] Checksum, seq=%d, recv_chk=%x, my_chk=%x\n",
-        hdr->data_seq, hdr->checksum, checksum(hdr)
+        hdr->sess_seq.seq, hdr->checksum, checksum(hdr)
     );
     // dump data as hex
     fprintf(stderr, "[*] Data: ");
