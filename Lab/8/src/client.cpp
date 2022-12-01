@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
             if (res.flag & RES_MALFORM) continue;
         }
 
-        fprintf(stderr, "sent init for '%06d' (%d bytes)", file.filename, file.size);
+        fprintf(stderr, "sent init for '%06d' (%d bytes)\n", file.filename, file.size);
 
         size_t offset = 0;
         std::set<size_t> remaining{};
