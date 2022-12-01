@@ -27,7 +27,9 @@ void do_reponse(int sock, struct sockaddr_in* cin, struct response_hdr_t* hdr) {
     hdr->flag_check = hdr->flag ^ RES_MAGIC;
     cin->sin_family = AF_INET;
 
-    printf("[*] Sending response to %s:%d, seq=%d, flag=%d\n", inet_ntoa(cin->sin_addr), ntohs(cin->sin_port), hdr->data_seq, hdr->flag);
+    if (DEBUG) {
+        printf("[*] Sending response to %s:%d, seq=%d, flag=%d\n", inet_ntoa(cin->sin_addr), ntohs(cin->sin_port), hdr->data_seq, hdr->flag);
+    }
     for (int i = 0; i < 4; ++i) {
         if(sendto(sock, (const void *) hdr, sizeof(struct response_hdr_t), 0, (struct sockaddr*) cin, sizeof(sockaddr_in)) < 0) {
             fail("sendto");
@@ -176,13 +178,15 @@ int main(int argc, char *argv[]) {
         auto session = session_map[sess_id];
         if (session->received_bytes < session->file_metadata.filesize) {
             // save the data chunk
-            printf("[/] [SessID:%d][ChunkID=%d] [FZ=%d/%d] Received data chunk from %s:%d\n",
-                recv_hdr->sess_id,
-                recv_hdr->data_seq,
-                session->received_bytes,
-                session->file_metadata.filesize,
-                inet_ntoa(csin.sin_addr),
-                ntohs(csin.sin_port));
+            if (DEBUG) {
+                printf("[/] [SessID:%d][ChunkID=%d] [FZ=%d/%d] Received data chunk from %s:%d\n",
+                    recv_hdr->sess_id,
+                    recv_hdr->data_seq,
+                    session->received_bytes,
+                    session->file_metadata.filesize,
+                    inet_ntoa(csin.sin_addr),
+                    ntohs(csin.sin_port));
+            }
 
             // send a ACK to the client
             response.sess_id = recv_hdr->sess_id;

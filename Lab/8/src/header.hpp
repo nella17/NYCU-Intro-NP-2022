@@ -25,7 +25,7 @@ struct init_t {
     uint32_t filesize;
 };
 
-constexpr size_t DATA_SIZE = 512;
+constexpr size_t DATA_SIZE = 1024;
 struct sender_hdr_t {
     uint16_t sess_id;
     uint16_t data_seq;

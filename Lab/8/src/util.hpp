@@ -9,7 +9,8 @@
 
 #include "header.hpp"
 
-const uint32_t MOD_ADLER = 65521;
+constexpr bool DEBUG = 0;
+constexpr uint32_t MOD_ADLER = 65521;
 
 inline void fail(const char* s) {
     if (errno) perror(s);
