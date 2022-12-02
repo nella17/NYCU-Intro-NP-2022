@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
     }
     fprintf(stderr, "[cli] total %lu bytes\n", total_bytes);
 
-    // std::sort(files.begin(), files.end(), [&](auto a, auto b) { return a.size > b.size; });
+    std::sort(files.begin(), files.end(), [&](auto a, auto b) { return a.size > b.size; });
 
     for(uint32_t idx = 0; idx < total; idx++) {
         auto &file = files[idx];
