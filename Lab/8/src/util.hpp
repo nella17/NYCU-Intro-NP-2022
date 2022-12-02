@@ -53,7 +53,7 @@ inline uint32_t checksum(const response_hdr_t* hdr) {
     return hdr->sess_seq.id ^ hdr->flag ^ RES_MAGIC;
 }
 
-inline void dump_sender_hdr(const struct sender_hdr_t* hdr) {
+inline void dump_hdr(const struct sender_hdr_t* hdr) {
     fprintf(stderr, "[*] Checksum, seq=%d, recv_chk=%x, my_chk=%x\n",
         hdr->sess_seq.seq, hdr->checksum, checksum(hdr)
     );
@@ -65,10 +65,19 @@ inline void dump_sender_hdr(const struct sender_hdr_t* hdr) {
     fprintf(stderr, "\n");
 }
 
-inline void set_sock_timeout(int sockfd) {
+inline void dump_hdr(const struct response_hdr_t* hdr) {
+    fprintf(stderr, "[*] Checksum, seq=%d, recv_chk=%x, my_chk=%x, flag=%d\n",
+        hdr->sess_seq.seq, hdr->checksum, checksum(hdr), hdr->flag
+    );
+}
+
+inline void set_sockopt(int sockfd) {
     struct timeval tv;
     tv.tv_sec = 0;
-    tv.tv_usec = 200 * 1000;
+    tv.tv_usec = 4 * 1000;
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
         fail("setsockopt(SO_RCVTIMEO)");
+    size_t size = 1024 * 1024 * TOTAL_SIZE;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) < 0)
+        fail("setsockopt(SO_RCVBUF)");
 }

@@ -30,8 +30,8 @@ void do_reponse(int sock, struct sockaddr_in* cin, struct response_hdr_t* hdr) {
     if (DEBUG) {
         printf("[*] Sending response to %s:%d, seq=%d, flag=%d\n", inet_ntoa(cin->sin_addr), ntohs(cin->sin_port), hdr->sess_seq.seq, hdr->flag);
     }
-    for (int i = 0; i < 4; ++i) {
-        if(sendto(sock, (const void *) hdr, sizeof(struct response_hdr_t), 0, (struct sockaddr*) cin, sizeof(sockaddr_in)) < 0) {
+    for (int i = 0; i < 2; ++i) {
+        if(sendto(sock, (const void *) hdr, sizeof(struct response_hdr_t), MSG_DONTWAIT, (struct sockaddr*) cin, sizeof(sockaddr_in)) < 0) {
             fail("sendto");
         }
     }
@@ -63,7 +63,7 @@ sender_hdr_t* recv_sender_data(int sock, struct sockaddr_in* cin) {
 
     // perform checksum
     if (hdr->checksum != checksum(hdr)) {
-        dump_sender_hdr(hdr);
+        dump_hdr(hdr);
         reponse_malformed(sock, hdr->sess_seq.sess, hdr->sess_seq.seq, cin);
         return NULL;
     }
@@ -127,10 +127,10 @@ int main(int argc, char *argv[]) {
         fail("bind");
     }
 
-    std::map<uint16_t, session_t*> session_map;
+    std::map<uint16_t, session_t> session_map;
     std::map<uint16_t, std::map<uint32_t, char*>> data_map;
     int completed_files = 0;
-    while (completed_files != NUM_FILES) {
+    while (true or completed_files != NUM_FILES) {
         struct sockaddr_in csin;
         bzero(&csin, sizeof(csin));
         std::map<uint32_t, char*> data;
@@ -146,13 +146,14 @@ int main(int argc, char *argv[]) {
         auto data_seq = recv_hdr->sess_seq.seq;
         if (data_seq == 0) {
             // create a new session
-            session_t* session = (session_t*) malloc(sizeof(session_t));
-            memcpy(&session->file_metadata, recv_hdr->data, sizeof(init_t));
-            session_map[sess_id] = session;
-
-            printf("[/] [SessID:%d][ChunkID=0] Received connection initiation from %s:%d\n", sess_id, inet_ntoa(csin.sin_addr), ntohs(csin.sin_port));
-            printf("[/] [SessID:%d][ChunkID=0] filename: %d\n", sess_id, session->file_metadata.filename);
-            printf("[/] [SessID:%d][ChunkID=0] total size: %d\n", sess_id, session->file_metadata.filesize);
+            if (session_map.count(sess_id) == 0) {
+                auto &session = session_map[sess_id];
+                memcpy(&session.file_metadata, recv_hdr->data, sizeof(init_t));
+                // printf("[/] [SessID:%d][ChunkID=0] Received connection initiation from %s:%d\n", sess_id, inet_ntoa(csin.sin_addr), ntohs(csin.sin_port));
+                // printf("[/] [SessID:%d][ChunkID=0] filename: %d\n", sess_id, session->file_metadata.filename);
+                // printf("[/] [SessID:%d][ChunkID=0] total size: %d\n", sess_id, session->file_metadata.filesize);
+                printf("[/] [SessID:%d][ChunkID=0] initiation %d: %d\n", sess_id, session.file_metadata.filename, session.file_metadata.filesize);
+            }
 
             // send a ACK to the client
             response.sess_seq = recv_hdr->sess_seq;
@@ -164,7 +165,8 @@ int main(int argc, char *argv[]) {
         }
 
         // if the session is not initialized, send a RST
-        if (session_map.find(sess_id) == session_map.end()) {
+        auto it = session_map.find(sess_id);
+        if (it == session_map.end()) {
             printf("[/] [SessID:%d][ChunkID=%d] Session not initialized, sending RST\n", sess_id, data_seq);
             response.sess_seq = recv_hdr->sess_seq;
             response.flag = RES_RST;
@@ -175,15 +177,15 @@ int main(int argc, char *argv[]) {
         }
 
         // If the connection is already initiated, receive the data chunks
-        auto session = session_map[sess_id];
-        if (session->received_bytes < session->file_metadata.filesize) {
+        auto& session = it->second;
+        if (session.received_bytes < session.file_metadata.filesize) {
             // save the data chunk
             if (DEBUG) {
                 printf("[/] [SessID:%d][ChunkID=%d] [FZ=%d/%d] Received data chunk from %s:%d\n",
                     sess_id,
                     data_seq,
-                    session->received_bytes,
-                    session->file_metadata.filesize,
+                    session.received_bytes,
+                    session.file_metadata.filesize,
                     inet_ntoa(csin.sin_addr),
                     ntohs(csin.sin_port));
             }
@@ -198,12 +200,12 @@ int main(int argc, char *argv[]) {
                 char* data_frag = (char*) malloc(DATA_SIZE);
                 memcpy(data_frag, recv_hdr->data, DATA_SIZE);
                 mp[data_seq] = data_frag;
-                session->received_bytes += DATA_SIZE;
+                session.received_bytes += DATA_SIZE;
             }
         }
 
         // check is the last received is the last chunk of data
-        if (!session->is_complete && session->received_bytes >= session->file_metadata.filesize) {
+        if (!session.is_complete && session.received_bytes >= session.file_metadata.filesize) {
             // All data recvived, send FIN
             printf("[/] [SessID:%d][ChunkID=%d] Received all data, sending FIN\n", sess_id, data_seq);
             response.sess_seq = {
@@ -213,16 +215,16 @@ int main(int argc, char *argv[]) {
             response.flag = RES_FIN;
             do_reponse(s, &csin, &response);
 
-            init_t* file_metadata = &session->file_metadata;
+            init_t& file_metadata = session.file_metadata;
             char* filename = (char*) malloc(100);
-            sprintf(filename, "%s/%06d", argv[1], file_metadata->filename);
-            printf("[/] [SessID:%d][ChunkID=%d] File saved to %s\n", sess_id, data_seq, filename);
-            save_to_file(filename, file_metadata->filesize, data_map[sess_id]);
+            sprintf(filename, "%s/%06d", argv[1], file_metadata.filename);
+            printf("[/] [SessID:%d][ChunkID=%d] File saved to %s (%d | %lu)\n", sess_id, data_seq, filename, file_metadata.filesize, data_map[sess_id].size());
+            save_to_file(filename, file_metadata.filesize, data_map[sess_id]);
 
-            session->is_complete = true;
+            session.is_complete = true;
             completed_files++;
             free(filename);
-        } else if (session->is_complete) {
+        } else if (session.is_complete) {
             response.sess_seq = {
                 .sess = sess_id,
                 .seq = 0

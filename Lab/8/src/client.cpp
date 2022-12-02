@@ -24,6 +24,7 @@
 #include <set>
 #include <map>
 #include <utility>
+#include <algorithm>
 
 #include "header.hpp"
 #include "util.hpp"
@@ -55,7 +56,7 @@ inline void wrap_send(uint16_t sess_id, uint16_t seq, int sockfd, const void* bu
     };
     memcpy(hdr.data, buf, len);
     hdr.checksum = checksum(&hdr);
-    // dump_sender_hdr(&hdr);
+    // dump_hdr(&hdr);
     // for(int i = 0; i < 3; i++)
         send(sockfd, &hdr, PACKET_SIZE, MSG_DONTWAIT);
 }
@@ -65,8 +66,8 @@ int main(int argc, char *argv[]) {
         return -fprintf(stderr, "Usage: %s <path-to-read-files> <total-number-of-files> <port> <server-ip-address>", argv[0]);
 
     setvbufs();
-    signal(SIGCHLD, SIG_IGN);
-    signal(SIGPIPE, SIG_IGN);
+    // signal(SIGCHLD, SIG_IGN);
+    // signal(SIGPIPE, SIG_IGN);
 
     char* path = argv[1];
     uint32_t total = (uint32_t)atoi(argv[2]);
@@ -78,6 +79,7 @@ int main(int argc, char *argv[]) {
     std::map<uint16_t, uint32_t> sess_ids{};
     std::map<sess_seq_u, data_t> data_map{};
 
+    size_t total_bytes = 0;
     for(uint32_t idx = 0; idx < total; idx++) {
         char filename[256];
         sprintf(filename, "%s/%06d", path, idx);
@@ -86,97 +88,129 @@ int main(int argc, char *argv[]) {
         auto &file = files[idx];
         file.filename = idx;
         file.size = (uint32_t)lseek(filefd, 0, SEEK_END);
+        file.init = {
+            .filename = file.filename,
+            .filesize = (uint32_t)file.size,
+        };
         file.data = (char*)malloc(file.size);
         lseek(filefd, 0, SEEK_SET);
         read(filefd, file.data, file.size);
         close(filefd);
         fprintf(stderr, "[cli] read '%s' (%lu bytes)\n", filename, file.size);
+        total_bytes += file.size;
+    }
+    fprintf(stderr, "[cli] total %lu bytes\n", total_bytes);
 
+    // std::sort(files.begin(), files.end(), [&](auto a, auto b) { return a.size > b.size; });
+
+    for(uint32_t idx = 0; idx < total; idx++) {
+        auto &file = files[idx];
         uint16_t sess_id = (uint16_t)idx;
         sess_ids.emplace(sess_id, idx);
-        for(size_t i = 0; i * DATA_SIZE < file.size; i++) {
-            size_t offset = i * DATA_SIZE;
-            sess_seq_u sess_seq = {
+        data_map.emplace(
+            sess_seq_u{
                 .sess = sess_id,
-                .seq  = uint16_t(i+1),
-            };
-            data_map[sess_seq] = {
-                .filename = idx,
-                .data_size = std::min(DATA_SIZE, file.size - offset),
-                .data = file.data + offset
-            };
-        }
+                .seq = 0
+            },
+            data_t{
+                .filename = file.filename,
+                .data_size = sizeof(file.init),
+                .data = (char*)&file.init,
+            }
+        );
     }
 
     int connfd = connect(ip, port);
-    set_sock_timeout(connfd);
+    set_sockopt(connfd);
 
     auto wait_sess_ids(sess_ids);
-    while (!wait_sess_ids.empty()) {
-        fprintf(stderr, "[cli] %lu sess_id left\n", wait_sess_ids.size());
-        for (auto [sess_id, idx] : wait_sess_ids) {
-            auto &file = files[idx];
-            init_t init {
-                .filename = file.filename,
-                .filesize = (uint32_t)file.size
-            };
-            wrap_send(sess_id, 0, connfd, &init, sizeof(init));
+
+    auto add_file_to_queue = [&](uint16_t sess_id) {
+        auto it = sess_ids.find(sess_id);
+        if (it == sess_ids.end()) return;
+        uint32_t idx = it->second;
+        auto &file = files[idx];
+        for(size_t i = 0; i * DATA_SIZE < file.size; i++) {
+            size_t offset = i * DATA_SIZE;
+            data_map.emplace(
+                sess_seq_u{
+                    .sess = sess_id,
+                    .seq  = uint16_t(i+1),
+                },
+                data_t{
+                    .filename = idx,
+                    .data_size = std::min(DATA_SIZE, file.size - offset),
+                    .data = file.data + offset
+                }
+            );
         }
+    };
+
+    auto erase_file_from_queue = [&](uint16_t sess_id) {
+        auto it = sess_ids.find(sess_id);
+        if (it == sess_ids.end()) return;
+        uint32_t idx = it->second;
+        auto &file = files[idx];
+        for(size_t i = 0; i * DATA_SIZE < file.size; i++) {
+            data_map.erase(sess_seq_u{
+                .sess = sess_id,
+                .seq  = uint16_t(i+1),
+            });
+        }
+    };
+
+    std::vector<sess_seq_u> ackq{};
+    auto read_resps = [&]() {
         response_hdr_t res;
         while (recv(connfd, &res, sizeof(res), 0) == sizeof(res)) {
-            if (checksum(&res) != res.checksum)
+            if (checksum(&res) != res.checksum) {
+                dump_hdr(&res);
                 continue;
+            }
+            auto sess_id = res.sess_seq.sess;
             if (res.flag & RES_ACK) {
-                auto sess_id = res.sess_seq.sess;
+                ackq.emplace_back(res.sess_seq);
                 if (res.sess_seq.seq == 0 and wait_sess_ids.count(sess_id)) {
                     wait_sess_ids.erase(sess_id);
                     fprintf(stderr, "[cli] sess_id %u acked\n", sess_id);
+                    add_file_to_queue(sess_id);
                 }
                 continue;
             }
-            if (res.flag & RES_MALFORM) continue;
-        }
-    }
-
-    while (!data_map.empty()) {
-        fprintf(stderr, "[cli] %lu data packets left\n", data_map.size());
-        for(auto [key, data] : data_map) {
-            wrap_send(key.sess, key.seq, connfd, data.data, data.data_size);
-        }
-
-        response_hdr_t res;
-        while (recv(connfd, &res, sizeof(res), 0) == sizeof(res)) {
-            if (checksum(&res) != res.checksum)
-                continue;
-            if (res.flag & RES_ACK) {
-                data_map.erase(res.sess_seq);
-                continue;
-            }
             if (res.flag & RES_MALFORM) {
+                // TODO
                 continue;
             }
             if (res.flag & RES_FIN) {
                 auto idx = sess_ids[res.sess_seq.sess];
                 auto &file = files[idx];
                 fprintf(stderr, "[cli] sent done for '%06d' (%lu bytes)\n", file.filename, file.size);
-                for(size_t i = 0; i * DATA_SIZE < file.size; i++)
-                    data_map.erase(sess_seq_u{
-                        .sess = res.sess_seq.sess,
-                        .seq  = uint16_t(i+1),
-                    });
+                erase_file_from_queue(sess_id);
                 continue;
             }
-            /*
             if (res.flag & RES_RST) {
-                auto idx = sess_ids[res.sess_id];
-                auto &file = files[idx];
-                fprintf(stderr, "[cli] ???? recv RET for '%06d' (%lu bytes)\n", file.filename, file.size);
-                for(size_t i = 0; i * DATA_SIZE < file.size; i++)
-                    data_map.erase({ res.sess_id , i+1 });
+                // TODO
                 continue;
             }
-            */
         }
+    };
+
+    while (!data_map.empty() || !wait_sess_ids.empty()) {
+        fprintf(stderr, "[cli] %lu data packets left\n", data_map.size());
+        if (!wait_sess_ids.empty())
+            fprintf(stderr, "[cli] %lu sess_id left\n", wait_sess_ids.size());
+
+        size_t cnt = 0;
+        for(auto [key, data] : data_map) {
+            wrap_send(key.sess, key.seq, connfd, data.data, data.data_size);
+            if (++cnt % WINDOW_SIZE == 0)
+                read_resps();
+        }
+        read_resps();
+        for(auto x: ackq)
+            data_map.erase(x);
+        ackq.clear();
     }
 
+    return 0;
 }
