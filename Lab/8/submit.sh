@@ -1,6 +1,7 @@
 #!/bin/bash
 set -ex
-g++ -static -O3 src/server.cpp -o bin/server.static.exe &
-g++ -static -O3 src/client.cpp -o bin/client.static.exe &
+CFLAGS="-static -O3 -I./zstd/lib zstd/lib/libzstd.a"
+g++ src/server.cpp -o bin/server.static.exe $CFLAGS &
+g++ src/client.cpp -o bin/client.static.exe $CFLAGS &
 wait
-python submit.py bin/server.static.exe bin/client.static.exe ${TOKEN?"TOKEN"}
+python submit.py bin/server.static.exe bin/client.static.exe ${TOKEN}

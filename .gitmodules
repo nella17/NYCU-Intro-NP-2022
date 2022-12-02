@@ -1,3 +1,6 @@
 [submodule "sample"]
 	path = sample
 	url = https://github.com/unpbook/unpv13e.git
+[submodule "Lab/8/zstd"]
+	path = Lab/8/zstd
+	url = https://github.com/facebook/zstd.git

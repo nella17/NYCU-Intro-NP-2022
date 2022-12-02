@@ -9,6 +9,7 @@
 
 #include "header.hpp"
 
+constexpr int COMPRESS_LEVEL = 9;
 constexpr bool DEBUG = 0;
 constexpr uint32_t MOD_ADLER = 65521;
 

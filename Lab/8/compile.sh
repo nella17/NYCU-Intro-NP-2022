@@ -1,4 +1,7 @@
 #!/bin/bash
-g++ -g src/server.cpp -o bin/server.exe &
-g++ -g src/client.cpp -o bin/client.exe &
+set -x
+
+CFLAGS="-g -I./zstd/lib zstd/lib/libzstd.a"
+g++ src/server.cpp -o bin/server.exe $CFLAGS &
+g++ src/client.cpp -o bin/client.exe $CFLAGS &
 wait

@@ -29,6 +29,8 @@
 #include "header.hpp"
 #include "util.hpp"
 
+#include "zstd.h"
+
 int connect(char* host, uint16_t port) {
     int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sockfd < 0)
@@ -85,19 +87,33 @@ int main(int argc, char *argv[]) {
         sprintf(filename, "%s/%06d", path, idx);
         int filefd = open(filename, O_RDONLY);
         if (filefd < 0) fail("open");
-        auto &file = files[idx];
-        file.filename = idx;
-        file.size = (uint32_t)lseek(filefd, 0, SEEK_END);
-        file.init = {
-            .filename = file.filename,
-            .filesize = (uint32_t)file.size,
-        };
-        file.data = new char[file.size];
+        auto orig_size = (uint32_t)lseek(filefd, 0, SEEK_END);
+        auto orig_data = new char[orig_size];
         lseek(filefd, 0, SEEK_SET);
-        read(filefd, file.data, file.size);
+        read(filefd, orig_data, orig_size);
         close(filefd);
-        fprintf(stderr, "[cli] read '%s' (%lu bytes)\n", filename, file.size);
-        total_bytes += file.size;
+        auto buf_size = ZSTD_compressBound(orig_size);
+        auto comp_data = new char[buf_size];
+        auto res = ZSTD_compress(comp_data, buf_size, orig_data, orig_size, COMPRESS_LEVEL);
+        if (ZSTD_isError(res)) {
+            fprintf(stderr, "%s\n", ZSTD_getErrorName(res));
+            exit(-1);
+        }
+        auto comp_size = (uint32_t)res;
+
+        files[idx] = {
+            .filename = idx,
+            .size = comp_size,
+            .init = {
+                .filename = idx,
+                .filesize = comp_size,
+            },
+            .data = comp_data,
+        };
+        fprintf(stderr, "[cli] read '%s' (%u bytes -> %u bytes)\n", filename, orig_size, comp_size);
+        total_bytes += comp_size;
+
+        delete [] orig_data;
     }
     fprintf(stderr, "[cli] total %lu bytes\n", total_bytes);
 

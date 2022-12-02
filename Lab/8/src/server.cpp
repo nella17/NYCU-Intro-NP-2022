@@ -17,6 +17,7 @@
 #include "header.hpp"
 #include "util.hpp"
 
+#include "zstd.h"
 
 struct session_t {
     init_t file_metadata;
@@ -67,7 +68,7 @@ sender_hdr_t* recv_sender_data(sender_hdr_t* hdr, int sock, struct sockaddr_in* 
     return hdr;
 }
 
-void save_to_file(char* filename, uint32_t filesize, DATA_MAP_T& data) {
+void save_to_file(char* filename, uint32_t comp_size, DATA_MAP_T& data) {
     int fp = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fp == -1) {
         fail("open");
@@ -82,19 +83,20 @@ void save_to_file(char* filename, uint32_t filesize, DATA_MAP_T& data) {
     // }
     // printf("\n");
 
-    size_t last_block_size = filesize % DATA_SIZE;
-    if (last_block_size == 0) {
-        last_block_size = DATA_SIZE;
-    }
-    for(auto it = data.begin(); it != data.end(); it++) {
-        auto data_frag = (char*)&it->second;
-        if (it->first) {
-            // last chunk of data
-            auto size = next(it) == data.end() ? last_block_size : DATA_SIZE;
-            write(fp, data_frag, size);
-        }
-    }
+    auto comp_data = new char[(1 + (comp_size-1) / DATA_SIZE) * DATA_SIZE];
+    for(auto [seq, data_frag]: data)
+        if (seq)
+            memcpy(comp_data + (seq-1) * DATA_SIZE, &data_frag, DATA_SIZE);
 
+    auto orig_size = ZSTD_getFrameContentSize(comp_data, comp_size);
+    auto orig_data = new char[orig_size];
+    ZSTD_decompress(orig_data, orig_size, comp_data, comp_size);
+
+    printf("[/] '%s' (%u bytes -> %llu bytes)\n", filename, comp_size, orig_size);
+    write(fp, orig_data, orig_size);
+
+    delete [] comp_data;
+    delete [] orig_data;
     data.clear();
     close(fp);
 }
