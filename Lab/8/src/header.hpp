@@ -41,9 +41,9 @@ union sess_seq_u {
 constexpr size_t HEADER_SIZE = 28;
 constexpr size_t DATA_SIZE = 1400;
 struct sender_hdr_t {
-    sess_seq_u sess_seq;
-    uint32_t checksum;
-    char     data[DATA_SIZE];
+    sess_seq_u sess_seq = { .id = 0 };
+    uint32_t checksum = 0;
+    char     data[DATA_SIZE] = { 0 };
 };
 constexpr size_t PACKET_SIZE = sizeof(sender_hdr_t);
 constexpr size_t TOTAL_SIZE = PACKET_SIZE + HEADER_SIZE;

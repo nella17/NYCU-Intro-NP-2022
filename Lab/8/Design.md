@@ -54,7 +54,3 @@ return value ^ hdr->sess_seq.id;
 #### Checksum algorithm
 
 - Checksum: `sess_seq.id ^ flag ^ MAGIC`
-
-#### Checksum algorithm
-
-- The flag is xored with a shared magic number

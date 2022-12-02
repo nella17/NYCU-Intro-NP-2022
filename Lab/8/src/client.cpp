@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
             .filename = file.filename,
             .filesize = (uint32_t)file.size,
         };
-        file.data = (char*)malloc(file.size);
+        file.data = new char[file.size];
         lseek(filefd, 0, SEEK_SET);
         read(filefd, file.data, file.size);
         close(filefd);
