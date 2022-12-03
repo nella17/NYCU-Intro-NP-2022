@@ -49,13 +49,10 @@ int connect(char* host, uint16_t port) {
     return sockfd;
 }
 
-inline void wrap_send(uint16_t sess_id, uint16_t seq, int sockfd, const void* buf, size_t len) {
+inline void wrap_send(uint32_t data_seq, int sockfd, const void* buf, size_t len) {
     sender_hdr_t hdr;
     bzero(&hdr, PACKET_SIZE);
-    hdr.sess_seq = {
-        .sess = sess_id,
-        .seq  = seq,
-    };
+    hdr.data_seq = data_seq;
     memcpy(hdr.data, buf, len);
 #ifdef USE_CHECKSUM
     hdr.checksum = checksum(&hdr);
@@ -80,8 +77,7 @@ int main(int argc, char *argv[]) {
 
     std::vector<file_t> files(total);
 
-    std::map<uint16_t, uint32_t> sess_ids{};
-    std::map<sess_seq_u, data_t> data_map{};
+    std::map<uint32_t, data_t> data_map{};
 
     size_t total_bytes = 0;
     for(uint32_t idx = 0; idx < total; idx++) {
@@ -89,95 +85,67 @@ int main(int argc, char *argv[]) {
         sprintf(filename, "%s/%06d", path, idx);
         int filefd = open(filename, O_RDONLY);
         if (filefd < 0) fail("open");
-        auto orig_size = (uint32_t)lseek(filefd, 0, SEEK_END);
-        auto orig_data = new char[orig_size];
+        auto size = (uint32_t)lseek(filefd, 0, SEEK_END);
+        auto data = new char[size];
         lseek(filefd, 0, SEEK_SET);
-        read(filefd, orig_data, orig_size);
+        read(filefd, data, size);
         close(filefd);
-        auto buf_size = ZSTD_compressBound(orig_size);
-        auto comp_data = new char[buf_size];
-        auto res = ZSTD_compress(comp_data, buf_size, orig_data, orig_size, COMPRESS_LEVEL);
-        if (ZSTD_isError(res)) {
-            fprintf(stderr, "%s\n", ZSTD_getErrorName(res));
-            exit(-1);
-        }
-        auto comp_size = (uint32_t)res;
 
         files[idx] = {
             .filename = idx,
-            .size = comp_size,
+            .size = size,
             .init = {
                 .filename = idx,
-                .filesize = comp_size,
+                .filesize = size,
             },
-            .data = comp_data,
+            .data = data,
         };
-        fprintf(stderr, "[cli] read '%s' (%u bytes -> %u bytes)\n", filename, orig_size, comp_size);
-        total_bytes += comp_size;
-
-        delete [] orig_data;
+        printf("[cli] read '%s' (%u bytes)\n", filename, size);
+        total_bytes += size;
     }
-    fprintf(stderr, "[cli] total %lu bytes\n", total_bytes);
 
-    std::sort(files.begin(), files.end(), [&](auto a, auto b) { return a.size < b.size; });
-
-    for(uint32_t idx = 0; idx < total; idx++) {
-        auto &file = files[idx];
-        uint16_t sess_id = (uint16_t)idx;
-        sess_ids.emplace(sess_id, idx);
-        data_map.emplace(
-            sess_seq_u{
-                .sess = sess_id,
-                .seq = 0
-            },
-            data_t{
-                .filename = file.filename,
-                .data_size = sizeof(file.init),
-                .data = (char*)&file.init,
-            }
-        );
+    auto orig_size = total * sizeof(init_t) + total_bytes;
+    auto orig_data = new char[orig_size];
+    {
+        auto ptr = orig_data;
+        for(auto& file: files) {
+            memcpy(ptr, &file.init, sizeof(init_t));
+            ptr += sizeof(init_t);
+            memcpy(ptr, file.data, file.size);
+            ptr += file.size;
+        }
     }
+    auto buf_size = ZSTD_compressBound(orig_size);
+    auto comp_data = new char[buf_size];
+    auto res = ZSTD_compress(comp_data, buf_size, orig_data, orig_size, COMPRESS_LEVEL);
+    if (ZSTD_isError(res)) {
+        fprintf(stderr, "%s\n", ZSTD_getErrorName(res));
+        exit(-1);
+    }
+    auto comp_size = (uint32_t)res;
+
+    printf("[cli] total %lu -> %u bytes\n", total_bytes, comp_size);
 
     int connfd = connect(ip, port);
     set_sockopt(connfd);
 
-    auto wait_sess_ids(sess_ids);
+    {
+        auto tmp = new data_t;
+        tmp->data_size = comp_size;
+        data_map.emplace(0, data_t { .data_size = sizeof(data_t), .data = (char*)tmp });
+    }
+    for(size_t i = 0; i * DATA_SIZE < comp_size; i++) {
+        size_t offset = i * DATA_SIZE;
+        data_map.emplace(
+            i+1,
+            data_t{
+                .data_size = std::min(DATA_SIZE, comp_size - offset),
+                .data = comp_data + offset,
+            }
+        );
+    }
 
-    auto add_file_to_queue = [&](uint16_t sess_id) {
-        auto it = sess_ids.find(sess_id);
-        if (it == sess_ids.end()) return;
-        uint32_t idx = it->second;
-        auto &file = files[idx];
-        for(size_t i = 0; i * DATA_SIZE < file.size; i++) {
-            size_t offset = i * DATA_SIZE;
-            data_map.emplace(
-                sess_seq_u{
-                    .sess = sess_id,
-                    .seq  = uint16_t(i+1),
-                },
-                data_t{
-                    .filename = idx,
-                    .data_size = std::min(DATA_SIZE, file.size - offset),
-                    .data = file.data + offset
-                }
-            );
-        }
-    };
-
-    auto erase_file_from_queue = [&](uint16_t sess_id) {
-        auto it = sess_ids.find(sess_id);
-        if (it == sess_ids.end()) return;
-        uint32_t idx = it->second;
-        auto &file = files[idx];
-        for(size_t i = 0; i * DATA_SIZE < file.size; i++) {
-            data_map.erase(sess_seq_u{
-                .sess = sess_id,
-                .seq  = uint16_t(i+1),
-            });
-        }
-    };
-
-    std::vector<sess_seq_u> ackq{};
+    std::vector<uint32_t> ackq{};
     auto read_resps = [&]() {
         response_hdr_t res;
         while (recv(connfd, &res, sizeof(res), MSG_WAITALL) == sizeof(res)) {
@@ -187,14 +155,8 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 #endif
-            auto sess_id = res.sess_seq.sess;
             if (res.flag & RES_ACK) {
-                ackq.emplace_back(res.sess_seq);
-                if (res.sess_seq.seq == 0 and wait_sess_ids.count(sess_id)) {
-                    wait_sess_ids.erase(sess_id);
-                    fprintf(stderr, "[cli] sess_id %u acked\n", sess_id);
-                    add_file_to_queue(sess_id);
-                }
+                ackq.emplace_back(res.data_seq);
                 continue;
             }
             if (res.flag & RES_MALFORM) {
@@ -202,10 +164,9 @@ int main(int argc, char *argv[]) {
                 continue;
             }
             if (res.flag & RES_FIN) {
-                auto idx = sess_ids[res.sess_seq.sess];
-                auto &file = files[idx];
-                fprintf(stderr, "[cli] sent done for '%06d' (%lu bytes)\n", file.filename, file.size);
-                erase_file_from_queue(sess_id);
+                printf("[cli] sent done for (%u bytes)\n", comp_size);
+                // usleep(100);
+                exit(0);
                 continue;
             }
             if (res.flag & RES_RST) {
@@ -215,14 +176,11 @@ int main(int argc, char *argv[]) {
         }
     };
 
-    while (!data_map.empty() || !wait_sess_ids.empty()) {
-        fprintf(stderr, "[cli] %lu data packets left\n", data_map.size());
-        if (!wait_sess_ids.empty())
-            fprintf(stderr, "[cli] %lu sess_id left\n", wait_sess_ids.size());
-
+    while (!data_map.empty()) {
+        printf("[cli] %lu data packets left\n", data_map.size());
         size_t cnt = 0;
         for(auto [key, data] : data_map) {
-            wrap_send(key.sess, key.seq, connfd, data.data, data.data_size);
+            wrap_send(key, connfd, data.data, data.data_size);
             if (++cnt % WINDOW_SIZE == 0)
                 read_resps();
         }

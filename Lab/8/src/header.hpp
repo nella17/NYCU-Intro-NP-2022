@@ -28,32 +28,19 @@ struct file_t {
 };
 
 struct data_t {
-    uint32_t filename;
     size_t   data_size;
     char*    data;
 };
 
-union sess_seq_u {
-    uint32_t id;
-    struct {
-        uint16_t sess;
-        uint16_t seq;
-    };
-    bool operator<(const sess_seq_u &rhs) const {
-        return id < rhs.id;
-    }
-
-};
-
 constexpr size_t HEADER_SIZE = 28;
-constexpr size_t DATA_SIZE = 1500 - HEADER_SIZE - sizeof(sess_seq_u)
+constexpr size_t DATA_SIZE = 1500 - HEADER_SIZE - sizeof(uint32_t)
 #ifdef USE_CHECKSUM
     - sizeof(uint32_t);
 #else
     ;
 #endif
 struct sender_hdr_t {
-    sess_seq_u sess_seq = { .id = 0 };
+    uint32_t data_seq = 0;
 #ifdef USE_CHECKSUM
     uint32_t checksum = 0;
 #endif
@@ -66,7 +53,7 @@ constexpr size_t BANDWIDTH = 10 * 1024 * 1024 / 8;
 constexpr size_t WINDOW_SIZE = BANDWIDTH / (TOTAL_SIZE << 4);
 
 struct response_hdr_t {
-    sess_seq_u sess_seq;
+    uint32_t data_seq;
 #ifdef USE_CHECKSUM
     uint32_t checksum;
 #endif
