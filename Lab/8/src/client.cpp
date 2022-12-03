@@ -57,7 +57,9 @@ inline void wrap_send(uint16_t sess_id, uint16_t seq, int sockfd, const void* bu
         .seq  = seq,
     };
     memcpy(hdr.data, buf, len);
+#ifdef USE_CHECKSUM
     hdr.checksum = checksum(&hdr);
+#endif
     // dump_hdr(&hdr);
     // for(int i = 0; i < 3; i++)
         send(sockfd, &hdr, PACKET_SIZE, MSG_DONTWAIT);
@@ -179,10 +181,12 @@ int main(int argc, char *argv[]) {
     auto read_resps = [&]() {
         response_hdr_t res;
         while (recv(connfd, &res, sizeof(res), 0) == sizeof(res)) {
+#ifdef USE_CHECKSUM
             if (checksum(&res) != res.checksum) {
                 dump_hdr(&res);
                 continue;
             }
+#endif
             auto sess_id = res.sess_seq.sess;
             if (res.flag & RES_ACK) {
                 ackq.emplace_back(res.sess_seq);

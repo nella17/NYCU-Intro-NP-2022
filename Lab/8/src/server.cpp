@@ -32,7 +32,9 @@ void do_reponse(int sock, struct sockaddr_in* cin, sess_seq_u sess_seq, uint32_t
         .sess_seq = sess_seq,
         .flag = flag,
     };
+#ifdef USE_CHECKSUM
     hdr.checksum = checksum(&hdr);
+#endif
     cin->sin_family = AF_INET;
 
     if (DEBUG) {
@@ -59,11 +61,13 @@ sender_hdr_t* recv_sender_data(sender_hdr_t* hdr, int sock, struct sockaddr_in* 
     }
 
     // perform checksum
+#ifdef USE_CHECKSUM
     if (hdr->checksum != checksum(hdr)) {
         dump_hdr(hdr);
         do_reponse(sock, cin, hdr->sess_seq, RES_MALFORM);
         return nullptr;
     }
+#endif
 
     return hdr;
 }
