@@ -84,7 +84,10 @@ inline void set_sockopt(int sockfd) {
     tv.tv_usec = 16 * 1000;
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
         fail("setsockopt(SO_RCVTIMEO)");
-    size_t size = 1024 * 1024 * TOTAL_SIZE;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) < 0)
+    size_t Ssize = WINDOW_SIZE / 2 * TOTAL_SIZE;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &Ssize, sizeof(Ssize)) < 0)
+        fail("setsockopt(SO_SNDBUF)");
+    size_t Rsize = 1024 * 1024 * TOTAL_SIZE;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &Rsize, sizeof(Rsize)) < 0)
         fail("setsockopt(SO_RCVBUF)");
 }

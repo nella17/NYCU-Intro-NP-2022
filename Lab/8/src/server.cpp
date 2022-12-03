@@ -41,7 +41,7 @@ void do_reponse(int sock, struct sockaddr_in* cin, sess_seq_u sess_seq, uint32_t
         printf("[*] Sending response to %s:%d, seq=%d, flag=%d\n", inet_ntoa(cin->sin_addr), ntohs(cin->sin_port), hdr.sess_seq.seq, hdr.flag);
     }
     for (int i = 0; i < 2; ++i) {
-        if(sendto(sock, (const void *) &hdr, sizeof(struct response_hdr_t), MSG_DONTWAIT, (struct sockaddr*) cin, sizeof(sockaddr_in)) < 0) {
+        if(sendto(sock, (const void *) &hdr, sizeof(struct response_hdr_t), 0, (struct sockaddr*) cin, sizeof(sockaddr_in)) < 0) {
             fail("sendto");
         }
     }
@@ -56,7 +56,7 @@ sender_hdr_t* recv_sender_data(sender_hdr_t* hdr, int sock, struct sockaddr_in* 
     bzero(hdr, sizeof(sender_hdr_t));
     socklen_t len = sizeof(&cin);
 
-    if(recvfrom(sock, (void *) hdr, PACKET_SIZE, 0, (struct sockaddr*) cin, &len) < 0) {
+    if(recvfrom(sock, (void *) hdr, PACKET_SIZE, MSG_WAITALL, (struct sockaddr*) cin, &len) < 0) {
         fail("recvfrom");
     }
 

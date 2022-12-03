@@ -63,7 +63,7 @@ constexpr size_t PACKET_SIZE = sizeof(sender_hdr_t);
 constexpr size_t TOTAL_SIZE = PACKET_SIZE + HEADER_SIZE;
 
 constexpr size_t BANDWIDTH = 10 * 1024 * 1024 / 8;
-constexpr size_t WINDOW_SIZE = BANDWIDTH / (TOTAL_SIZE * 16);
+constexpr size_t WINDOW_SIZE = BANDWIDTH / (TOTAL_SIZE << 4);
 
 struct response_hdr_t {
     sess_seq_u sess_seq;

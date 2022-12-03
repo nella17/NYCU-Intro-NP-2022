@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
     std::vector<sess_seq_u> ackq{};
     auto read_resps = [&]() {
         response_hdr_t res;
-        while (recv(connfd, &res, sizeof(res), 0) == sizeof(res)) {
+        while (recv(connfd, &res, sizeof(res), MSG_WAITALL) == sizeof(res)) {
 #ifdef USE_CHECKSUM
             if (checksum(&res) != res.checksum) {
                 dump_hdr(&res);
