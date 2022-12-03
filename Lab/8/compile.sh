@@ -1,7 +1,7 @@
 #!/bin/bash
 set -x
 
-CFLAGS="-g -I./zstd/lib zstd/lib/libzstd.a"
+CFLAGS="-g -DDEBUG -I./zstd/lib zstd/lib/libzstd.a"
 g++ src/server.cpp -o bin/server.exe $CFLAGS &
 g++ src/client.cpp -o bin/client.exe $CFLAGS &
 wait

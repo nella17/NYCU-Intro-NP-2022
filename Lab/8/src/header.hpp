@@ -2,6 +2,12 @@
 #include <cstdint>
 #include <unistd.h>
 
+#ifndef DEBUG
+#define printf x
+#define fprintf x
+int x(...) { return 1; }
+#endif
+
 constexpr uint32_t RES_ACK     = 1 << 0;
 constexpr uint32_t RES_MALFORM = 1 << 1;
 constexpr uint32_t RES_FIN     = 1 << 2;
