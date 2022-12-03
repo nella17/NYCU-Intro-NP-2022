@@ -75,7 +75,7 @@ inline void dump_hdr(const struct response_hdr_t* hdr) {
 inline void set_sockopt(int sockfd) {
     struct timeval tv;
     tv.tv_sec = 0;
-    tv.tv_usec = 4 * 1000;
+    tv.tv_usec = 16 * 1000;
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
         fail("setsockopt(SO_RCVTIMEO)");
     size_t size = 1024 * 1024 * TOTAL_SIZE;
