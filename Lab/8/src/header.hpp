@@ -31,8 +31,9 @@ struct data_t {
     char*    data;
 };
 
+constexpr size_t TOTAL_SIZE = 1500;
 constexpr size_t HEADER_SIZE = 28;
-constexpr size_t DATA_SIZE = 1500 - HEADER_SIZE - sizeof(uint32_t)
+constexpr size_t DATA_SIZE = TOTAL_SIZE - HEADER_SIZE - sizeof(uint32_t)
 #ifdef USE_CHECKSUM
     - sizeof(uint32_t);
 #else
@@ -46,10 +47,9 @@ struct sender_hdr_t {
     char     data[DATA_SIZE] = { 0 };
 };
 constexpr size_t PACKET_SIZE = sizeof(sender_hdr_t);
-constexpr size_t TOTAL_SIZE = PACKET_SIZE + HEADER_SIZE;
 
 constexpr size_t BANDWIDTH = 10 * 1024 * 1024 / 8;
-constexpr size_t WINDOW_SIZE = BANDWIDTH / (TOTAL_SIZE << 4);
+constexpr size_t WINDOW_SIZE = BANDWIDTH / (TOTAL_SIZE * 32);
 
 struct response_hdr_t {
     uint32_t data_seq;

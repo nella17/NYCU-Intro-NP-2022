@@ -1,5 +1,5 @@
 #!/bin/bash
-for i in {0..499}; do
-  (cat /dev/random | head -c 8192 > ./files/send/$(printf "%06d" $i)) &
+for i in {0..999}; do
+  (cat /dev/random | head -c 65535 > ./files/send/$(printf "%06d" $i)) &
 done
 wait
