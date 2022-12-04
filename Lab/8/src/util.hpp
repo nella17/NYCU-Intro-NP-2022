@@ -58,21 +58,21 @@ inline uint32_t checksum(const response_hdr_t* hdr) {
 
 inline void dump_hdr(const struct sender_hdr_t* hdr) {
 #ifdef USE_CHECKSUM
-    fprintf(stderr, "[*] Checksum, seq=%d, recv_chk=%x, my_chk=%x\n",
+    printf("[*] Checksum, seq=%d, recv_chk=%x, my_chk=%x\n",
         hdr->sess_seq.seq, hdr->checksum, checksum(hdr)
     );
 #endif
     // dump data as hex
-    fprintf(stderr, "[*] Data: ");
+    printf("[*] Data: ");
     for (size_t i = 0; i < DATA_SIZE; i++) {
-        fprintf(stderr, "%02x ", (uint8_t)hdr->data[i]);
+        printf("%02x ", (uint8_t)hdr->data[i]);
     }
-    fprintf(stderr, "\n");
+    printf("\n");
 }
 
 inline void dump_hdr(const struct response_hdr_t* hdr) {
 #ifdef USE_CHECKSUM
-    fprintf(stderr, "[*] Checksum, seq=%d, recv_chk=%x, my_chk=%x, flag=%d\n",
+    printf("[*] Checksum, seq=%d, recv_chk=%x, my_chk=%x, flag=%d\n",
         hdr->sess_seq.seq, hdr->checksum, checksum(hdr), hdr->flag
     );
 #endif

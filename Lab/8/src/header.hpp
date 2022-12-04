@@ -4,7 +4,6 @@
 
 #ifndef DEBUG
 #define printf x
-#define fprintf x
 int x(...) { return 1; }
 #endif
 // #define USE_CHECKSUM
