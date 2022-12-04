@@ -1,7 +1,11 @@
 # Protocol Design
 
+- Files concat & compresse via zstd
 - The protocol should support multiply connection at same time for server/client
+    - TODO: Session via client info
 - Easy to parse!
+- Optional Checksum (Checksum exist in UDP)
+- Don't wait Initialzation
 
 ## Packet Format
 
@@ -10,18 +14,15 @@
 ### Session Initialzation
 
 ```
-| Session ID (2) | Data Sequence = 0 (2) | Data Checksum (4)  | filename (4) | file size (4) |
+| Data Sequence = 0 (4) | Data Checksum (4)  | compressed size (4) |
 ```
 
-- Steps
-    - Sender send initialization request
-    - Receiver send back a ACK response with `sequence no. = 0`
-    - Sender start sending data using `sender transfer` format
+- Receiver send back a ACK response with `sequence no. = 0`
 
 ### Data Transfer Format
 
 ```
-| Session ID (2) | Data Sequence (2) | Data Checksum (4) | Data |
+| Data Sequence (4) | Data Checksum (4) | Data |
 ```
 
 - Client timeout and resend when packet is somehow lost forever
