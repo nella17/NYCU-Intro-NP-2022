@@ -31,7 +31,7 @@ struct data_t {
     char*    data;
 };
 
-constexpr size_t TOTAL_SIZE = 1500;
+constexpr size_t TOTAL_SIZE = 1050;
 constexpr size_t HEADER_SIZE = 28;
 constexpr size_t DATA_SIZE = TOTAL_SIZE - HEADER_SIZE - sizeof(uint32_t)
 #ifdef USE_CHECKSUM
