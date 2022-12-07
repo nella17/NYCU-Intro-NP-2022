@@ -16,6 +16,7 @@
 
 #include "header.hpp"
 #include "util.hpp"
+#include "dictionary.h"
 
 #include "zstd.h"
 
@@ -78,9 +79,17 @@ int save_to_file(const char* path, uint32_t comp_size, DATA_MAP_T& data) {
         if (seq)
             memcpy(comp_data + (seq-1) * DATA_SIZE, &data_frag, DATA_SIZE);
 
+#ifdef DUMP
+    puts("BEGIN");
+    write(1, comp_data, comp_size);
+    puts("END");
+#endif
+
     auto orig_size = ZSTD_getFrameContentSize(comp_data, comp_size);
     auto orig_data = new char[orig_size];
-    ZSTD_decompress(orig_data, orig_size, comp_data, comp_size);
+    auto ctx = ZSTD_createDCtx();
+    ZSTD_decompress_usingDict(ctx, orig_data, orig_size, comp_data, comp_size, dict, dict_size);
+    ZSTD_freeDCtx(ctx);
 
     printf("[/] %u bytes -> %llu bytes\n", comp_size, orig_size);
 

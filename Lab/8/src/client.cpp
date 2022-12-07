@@ -28,6 +28,7 @@
 
 #include "header.hpp"
 #include "util.hpp"
+#include "dictionary.h"
 
 #include "zstd.h"
 
@@ -115,16 +116,19 @@ int main(int argc, char *argv[]) {
             ptr += file.size;
         }
     }
+    fprintf(stderr, "%p %d\n", dict, dict_size);
     auto buf_size = ZSTD_compressBound(orig_size);
     auto comp_data = new char[buf_size];
-    auto res = ZSTD_compress(comp_data, buf_size, orig_data, orig_size, COMPRESS_LEVEL);
+    auto ctx = ZSTD_createCCtx();
+    auto res = ZSTD_compress_usingDict(ctx, comp_data, buf_size, orig_data, orig_size, dict, dict_size, COMPRESS_LEVEL);
+    ZSTD_freeCCtx(ctx);
     if (ZSTD_isError(res)) {
         fprintf(stderr, "%s\n", ZSTD_getErrorName(res));
         exit(-1);
     }
     auto comp_size = (uint32_t)res;
 
-    printf("[cli] total %lu -> %u bytes\n", total_bytes, comp_size);
+    fprintf(stderr, "[cli] total %lu -> %u bytes\n", total_bytes, comp_size);
 
     int connfd = connect(ip, port);
     set_sockopt(connfd);

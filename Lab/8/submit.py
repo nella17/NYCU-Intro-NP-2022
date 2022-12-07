@@ -56,6 +56,12 @@ send_teamtoken(teamtoken);
 upload(sys.argv[1]);
 upload(sys.argv[2]);
 
+if args.DUMP:
+    print(r.readuntil(b'BEGIN\n', drop=True).decode())
+    data = r.readuntil(b'END\n', drop=True)
+    with open('data.zstd', 'wb') as f:
+        f.write(data)
+
 r.interactive();
 
 r.close();
