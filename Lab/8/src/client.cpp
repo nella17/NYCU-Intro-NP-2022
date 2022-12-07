@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
             ptr += file.size;
         }
     }
-    fprintf(stderr, "%p %d\n", dict, dict_size);
+    fprintf(stderr, "dictionary: %p (%d bytes)\n", dict, dict_size);
     auto buf_size = ZSTD_compressBound(orig_size);
     auto comp_data = new char[buf_size];
     auto ctx = ZSTD_createCCtx();
