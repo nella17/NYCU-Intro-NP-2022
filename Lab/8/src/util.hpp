@@ -9,14 +9,12 @@
 
 #include "header.hpp"
 
-constexpr int COMPRESS_LEVEL = 12;
-constexpr bool DEBUG = 0;
-constexpr uint32_t MOD_ADLER = 65521;
-
 inline void fail(const char* s) {
     if (errno) perror(s);
     else fprintf(stderr, "%s: unknown error", s);
+#ifndef DEBUG
     exit(-1);
+#endif
 }
 
 inline void setvbufs() {
@@ -56,6 +54,7 @@ inline uint32_t checksum(const response_hdr_t* hdr) {
 }
 #endif
 
+/*
 inline void dump_hdr(const struct sender_hdr_t* hdr) {
 #ifdef USE_CHECKSUM
     printf("[*] Checksum, seq=%d, recv_chk=%x, my_chk=%x\n",
@@ -77,17 +76,18 @@ inline void dump_hdr(const struct response_hdr_t* hdr) {
     );
 #endif
 }
+*/
 
 inline void set_sockopt(int sockfd) {
     struct timeval tv;
     tv.tv_sec = 0;
-    tv.tv_usec = 7980;
+    tv.tv_usec = 500;
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
         fail("setsockopt(SO_RCVTIMEO)");
-    size_t Ssize = TOTAL_SIZE * 32;
+    size_t Ssize = 2 * TOTAL_SIZE;
     if (setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &Ssize, sizeof(Ssize)) < 0)
         fail("setsockopt(SO_SNDBUF)");
-    size_t Rsize = 1024 * 1024 * TOTAL_SIZE;
+    size_t Rsize = 16 * 1024 * TOTAL_SIZE;
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &Rsize, sizeof(Rsize)) < 0)
         fail("setsockopt(SO_RCVBUF)");
 }

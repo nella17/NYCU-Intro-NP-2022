@@ -1,5 +1,6 @@
 #include <array>
 #include <arpa/inet.h>
+#include <bitset>
 #include <cstddef>
 #include <fcntl.h>
 #include <iostream>
@@ -13,6 +14,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <filesystem>
+#include <chrono>
 
 #include "header.hpp"
 #include "util.hpp"
@@ -28,21 +30,17 @@ struct session_t {
 
 using DATA_MAP_T = std::map<uint32_t, std::array<char,DATA_SIZE>>;
 
-void do_reponse(int sock, struct sockaddr_in* cin, uint32_t data_seq, uint32_t flag) {
-    response_hdr_t hdr{
-        .data_seq = data_seq,
-        .flag = flag,
-    };
+void do_reponse(int sock, struct sockaddr_in* cin, hdr_t& hdr) {
 #ifdef USE_CHECKSUM
     hdr.checksum = checksum(&hdr);
 #endif
     cin->sin_family = AF_INET;
 
     if (DEBUG) {
-        printf("[*] Sending response to %s:%d, seq=%d, flag=%d\n", inet_ntoa(cin->sin_addr), ntohs(cin->sin_port), hdr.data_seq, hdr.flag);
+        printf("[*] Sending response to %s:%d, seq=%d\n", inet_ntoa(cin->sin_addr), ntohs(cin->sin_port), hdr.data_seq);
     }
-    for (int i = 0; i < 2; ++i) {
-        if(sendto(sock, (const void *) &hdr, sizeof(struct response_hdr_t), 0, (struct sockaddr*) cin, sizeof(sockaddr_in)) < 0) {
+    for (int i = 0; i < 3; ++i) {
+        if(sendto(sock, (const void *) &hdr, sizeof(struct hdr_t), 0, (struct sockaddr*) cin, sizeof(sockaddr_in)) < 0) {
             fail("sendto");
         }
     }
@@ -51,10 +49,10 @@ void do_reponse(int sock, struct sockaddr_in* cin, uint32_t data_seq, uint32_t f
 /*
  * Receive sender data and check if the packet is valid
  *
- * @return sender_hdr_t* if the packet is valid, nullptr otherwise
+ * @return hdr_t* if the packet is valid, nullptr otherwise
  */
-sender_hdr_t* recv_sender_data(sender_hdr_t* hdr, int sock, struct sockaddr_in* cin) {
-    bzero(hdr, sizeof(sender_hdr_t));
+hdr_t* recv_sender_data(hdr_t* hdr, int sock, struct sockaddr_in* cin) {
+    bzero(hdr, sizeof(hdr_t));
     socklen_t len = sizeof(&cin);
 
     if(recvfrom(sock, (void *) hdr, PACKET_SIZE, MSG_WAITALL, (struct sockaddr*) cin, &len) < 0) {
@@ -65,7 +63,8 @@ sender_hdr_t* recv_sender_data(sender_hdr_t* hdr, int sock, struct sockaddr_in* 
 #ifdef USE_CHECKSUM
     if (hdr->checksum != checksum(hdr)) {
         dump_hdr(hdr);
-        do_reponse(sock, cin, hdr->data_seq, RES_MALFORM);
+        // TODO
+        // do_reponse(sock, cin, hdr->data_seq);
         return nullptr;
     }
 #endif
@@ -88,7 +87,7 @@ int save_to_file(const char* path, uint32_t comp_size, DATA_MAP_T& data) {
     auto orig_size = ZSTD_getFrameContentSize(comp_data, comp_size);
     auto orig_data = new char[orig_size];
     auto ctx = ZSTD_createDCtx();
-    ZSTD_decompress_usingDict(ctx, orig_data, orig_size, comp_data, comp_size, dict, dict_size);
+    ZSTD_decompress_usingDict(ctx, orig_data, orig_size, comp_data, comp_size, dict, (size_t)dict_size);
     ZSTD_freeDCtx(ctx);
 
     printf("[/] %u bytes -> %llu bytes\n", comp_size, orig_size);
@@ -150,51 +149,68 @@ int main(int argc, char *argv[]) {
 
     uint32_t comp_size = UINT_MAX, recv_size = 0;
     DATA_MAP_T data_map;
-    sender_hdr_t recv_hdr;
+    hdr_t recv_hdr;
     struct sockaddr_in csin;
+
+    auto last_send = std::chrono::steady_clock::now();
+    bool keep = false;
+    int r = 0, k = 2;
+    hdr_t send_hdr{
+        .data_seq = 0
+    };
+    auto& recvbit = *(std::bitset<DATA_SIZE*8>*)&send_hdr.data;
 
     while (comp_size == UINT_MAX or recv_size < comp_size) {
         bzero(&csin, sizeof(csin));
-        if (recv_sender_data(&recv_hdr, listenfd, &csin) == nullptr)
-            continue;
-
-        // session initialization
-        auto data_seq = recv_hdr.data_seq;
-        if (data_seq == 0) {
-            // create a new session
-            data_t tmp;
-            memcpy(&tmp, recv_hdr.data, sizeof(data_t));
-            comp_size = (uint32_t)tmp.data_size;
-            printf("[/] [ChunkID=%d] initiation %d bytes\n", data_seq, comp_size);
-        } else {
-            // save the data chunk
-            if (DEBUG) {
-                printf("[/] [ChunkID=%d] Received data chunk from %s:%d\n",
-                    data_seq,
-                    inet_ntoa(csin.sin_addr),
-                    ntohs(csin.sin_port)
-                );
-            }
-            if (!data_map.count(data_seq)) {
-                auto& data_frag = data_map[data_seq];
-                memcpy(&data_frag, recv_hdr.data, DATA_SIZE);
-                recv_size += DATA_SIZE;
+        if (recv_sender_data(&recv_hdr, listenfd, &csin) != nullptr) {
+            // session initialization
+            auto data_seq = recv_hdr.data_seq;
+            recvbit[data_seq] = 1;
+            if (data_seq == 0) {
+                // create a new session
+                data_t tmp;
+                memcpy(&tmp, recv_hdr.data, sizeof(data_t));
+                comp_size = (uint32_t)tmp.data_size;
+                printf("[/] [ChunkID=%d] initiation %d bytes\n", data_seq, comp_size);
+            } else {
+                // save the data chunk
+                if (DEBUG) {
+                    printf("[/] [ChunkID=%d] Received data chunk from %s:%d\n",
+                        data_seq,
+                        inet_ntoa(csin.sin_addr),
+                        ntohs(csin.sin_port)
+                    );
+                }
+                if (!data_map.count(data_seq)) {
+                    auto& data_frag = data_map[data_seq];
+                    memcpy(&data_frag, recv_hdr.data, DATA_SIZE);
+                    recv_size += DATA_SIZE;
+                }
             }
         }
 
         // send a ACK to the client
-        do_reponse(listenfd, &csin, recv_hdr.data_seq, RES_ACK);
+        auto now = std::chrono::steady_clock::now();
+        if (now - last_send > std::chrono::milliseconds(keep ? 10 : int(1000 / k))) {
+            last_send = now;
+            fprintf(stderr, "[/] %2.2f send %lu ack\n", ++r / double(k), recvbit.count());
+            do_reponse(listenfd, &csin, send_hdr);
+        }
+        if ((comp_size / DATA_SIZE) - recvbit.count() < 100)
+            keep = true;
     }
 
     auto write = save_to_file(path, comp_size, data_map);
-    printf("[/] save %d / %d files\n", write, total);
+    fprintf(stderr, "[/] save %d / %d files\n", write, total);
 
     // All data recvived, send FIN
-    printf("[/] Received all data, sending FIN\n");
+    fprintf(stderr, "[/] Received all data, sending FIN\n");
+
+    send_hdr.data_seq = UINT32_MAX;
     while (true) {
         if (recv_sender_data(&recv_hdr, listenfd, &csin) == nullptr)
             continue;
-        do_reponse(listenfd, &csin, 0, RES_FIN);
+        do_reponse(listenfd, &csin, send_hdr);
     }
 
     close(listenfd);

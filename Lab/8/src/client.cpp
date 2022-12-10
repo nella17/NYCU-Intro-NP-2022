@@ -20,17 +20,22 @@
 #include <netinet/udp.h>
 #include <arpa/inet.h>
 
+#include <chrono>
+#include <bitset>
 #include <vector>
 #include <set>
 #include <map>
 #include <utility>
 #include <algorithm>
+#include <random>
 
 #include "header.hpp"
 #include "util.hpp"
 #include "dictionary.h"
 
 #include "zstd.h"
+
+std::mt19937 rng((int)std::chrono::steady_clock::now().time_since_epoch().count());
 
 int connect(char* host, uint16_t port) {
     int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -51,7 +56,7 @@ int connect(char* host, uint16_t port) {
 }
 
 inline void wrap_send(uint32_t data_seq, int sockfd, const void* buf, size_t len) {
-    sender_hdr_t hdr;
+    hdr_t hdr;
     bzero(&hdr, PACKET_SIZE);
     hdr.data_seq = data_seq;
     memcpy(hdr.data, buf, len);
@@ -59,8 +64,8 @@ inline void wrap_send(uint32_t data_seq, int sockfd, const void* buf, size_t len
     hdr.checksum = checksum(&hdr);
 #endif
     // dump_hdr(&hdr);
-    // for(int i = 0; i < 3; i++)
-        send(sockfd, &hdr, PACKET_SIZE, MSG_DONTWAIT);
+    if (send(sockfd, &hdr, PACKET_SIZE, 0) < 0)
+        fail("[cli] fail send");
 }
 
 int main(int argc, char *argv[]) {
@@ -119,25 +124,27 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "dictionary: %p (%d bytes)\n", dict, dict_size);
     auto buf_size = ZSTD_compressBound(orig_size);
     auto comp_data = new char[buf_size];
-    auto ctx = ZSTD_createCCtx();
-    auto res = ZSTD_compress_usingDict(ctx, comp_data, buf_size, orig_data, orig_size, dict, dict_size, COMPRESS_LEVEL);
-    ZSTD_freeCCtx(ctx);
-    if (ZSTD_isError(res)) {
-        fprintf(stderr, "%s\n", ZSTD_getErrorName(res));
-        exit(-1);
+    uint32_t comp_size;
+    {
+        auto ctx = ZSTD_createCCtx();
+        auto res = ZSTD_compress_usingDict(ctx, comp_data, buf_size, orig_data, orig_size, dict, (size_t)dict_size, COMPRESS_LEVEL);
+        ZSTD_freeCCtx(ctx);
+        if (ZSTD_isError(res)) {
+            fprintf(stderr, "%s\n", ZSTD_getErrorName(res));
+            exit(-1);
+        }
+        comp_size = (uint32_t)res;
     }
-    auto comp_size = (uint32_t)res;
 
     fprintf(stderr, "[cli] total %lu -> %u bytes\n", total_bytes, comp_size);
 
     int connfd = connect(ip, port);
     set_sockopt(connfd);
 
-    {
-        auto tmp = new data_t;
-        tmp->data_size = comp_size;
-        data_map.emplace(0, data_t { .data_size = sizeof(data_t), .data = (char*)tmp });
-    }
+    data_t zero{
+        .data_size = comp_size
+    };
+    data_map.emplace(0, data_t { .data_size = sizeof(data_t), .data = (char*)&zero });
     for(size_t i = 0; i * DATA_SIZE < comp_size; i++) {
         size_t offset = i * DATA_SIZE;
         data_map.emplace(
@@ -149,9 +156,11 @@ int main(int argc, char *argv[]) {
         );
     }
 
-    std::vector<uint32_t> ackq{};
+    hdr_t s_res;
+    auto& donebit = *(std::bitset<DATA_SIZE*8>*)&s_res.data;
+
     auto read_resps = [&]() {
-        response_hdr_t res;
+        hdr_t res;
         while (recv(connfd, &res, sizeof(res), MSG_WAITALL) == sizeof(res)) {
 #ifdef USE_CHECKSUM
             if (checksum(&res) != res.checksum) {
@@ -159,39 +168,40 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 #endif
-            if (res.flag & RES_ACK) {
-                ackq.emplace_back(res.data_seq);
-                continue;
-            }
-            if (res.flag & RES_MALFORM) {
-                // TODO
-                continue;
-            }
-            if (res.flag & RES_FIN) {
+            s_res = res;
+            if (res.data_seq == UINT32_MAX) {
                 printf("[cli] sent done for (%u bytes)\n", comp_size);
                 // usleep(100);
                 exit(0);
                 continue;
             }
-            if (res.flag & RES_RST) {
-                // TODO
-                continue;
-            }
         }
     };
 
+    int r = 0;
+    auto last_send = std::chrono::steady_clock::now();
     while (!data_map.empty()) {
-        printf("[cli] %lu data packets left\n", data_map.size());
+        fprintf(stderr, "[cli] %d: %lu data packets left\n", ++r, data_map.size());
         size_t cnt = 0;
-        for(auto [key, data] : data_map) {
+        std::vector<std::pair<uint32_t, data_t>> v{};
+        v.reserve(data_map.size());
+        for(auto [key, data] : data_map) if (!donebit[key]) 
+            v.emplace_back(key, data);
+        // if (r > 1)
+            std::shuffle(v.begin(), v.end(), rng);
+        for(auto [key, data] : v) if (!donebit[key]) {
             wrap_send(key, connfd, data.data, data.data_size);
-            if (++cnt % WINDOW_SIZE == 0)
+            if (r > 1 and ++cnt % WINDOW_SIZE == 0)
                 read_resps();
+            else
+                usleep(500);
         }
+        while (data_map.size() > 100 and std::chrono::steady_clock::now() - last_send <= std::chrono::milliseconds(40))
+            usleep(1);
+        last_send = std::chrono::steady_clock::now();
         read_resps();
-        for(auto x: ackq)
-            data_map.erase(x);
-        ackq.clear();
+        for (size_t i = 0; i < DATA_SIZE*8; i++)
+            if (donebit[i]) data_map.erase((uint32_t)i);
     }
 
     return 0;
