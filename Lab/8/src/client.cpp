@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
             else
                 usleep(500);
         }
-        while (data_map.size() > 100 and std::chrono::steady_clock::now() - last_send <= std::chrono::milliseconds(40))
+        while (data_map.size() > 100 and std::chrono::steady_clock::now() - last_send <= std::chrono::milliseconds(50))
             usleep(1);
         last_send = std::chrono::steady_clock::now();
         read_resps();

@@ -190,14 +190,14 @@ int main(int argc, char *argv[]) {
         }
 
         // send a ACK to the client
+        if (!keep and (comp_size / DATA_SIZE) - recvbit.count() < 100)
+            keep = true;
         auto now = std::chrono::steady_clock::now();
         if (now - last_send > std::chrono::milliseconds(keep ? 10 : int(1000 / k))) {
             last_send = now;
             fprintf(stderr, "[/] %2.2f send %lu ack\n", ++r / double(k), recvbit.count());
             do_reponse(listenfd, &csin, send_hdr);
         }
-        if ((comp_size / DATA_SIZE) - recvbit.count() < 100)
-            keep = true;
     }
 
     auto write = save_to_file(path, comp_size, data_map);

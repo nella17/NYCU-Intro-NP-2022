@@ -10,8 +10,7 @@
 constexpr bool DEBUG = 1;
 #else
 constexpr bool DEBUG = 0;
-#define printf x
-int x(...) { return 1; }
+#define printf(...) 1
 #endif
 // #define USE_CHECKSUM
 
