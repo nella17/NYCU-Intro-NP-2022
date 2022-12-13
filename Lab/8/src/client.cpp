@@ -28,6 +28,7 @@
 #include <utility>
 #include <algorithm>
 #include <random>
+#include <thread>
 
 #include "header.hpp"
 #include "util.hpp"
@@ -182,22 +183,14 @@ int main(int argc, char *argv[]) {
     auto last_send = std::chrono::steady_clock::now();
     while (!data_map.empty()) {
         fprintf(stderr, "[cli] %d: %lu data packets left\n", ++r, data_map.size());
-        size_t cnt = 0;
-        std::vector<std::pair<uint32_t, data_t>> v{};
-        v.reserve(data_map.size());
-        for(auto [key, data] : data_map) if (!donebit[key]) 
-            v.emplace_back(key, data);
-        // if (r > 1)
-            std::shuffle(v.begin(), v.end(), rng);
-        for(auto [key, data] : v) if (!donebit[key]) {
+        for(auto [key, data] : data_map) if (!donebit[key])  {
             wrap_send(key, connfd, data.data, data.data_size);
-            if (r > 1 and ++cnt % WINDOW_SIZE == 0)
-                read_resps();
-            else
-                usleep(500);
+            usleep(500);
         }
-        while (data_map.size() > 100 and std::chrono::steady_clock::now() - last_send <= std::chrono::milliseconds(50))
-            usleep(1);
+        if (data_map.size() > 100) {
+            auto wait = std::chrono::milliseconds(SEND_TIME);
+            std::this_thread::sleep_until(last_send + wait);
+        }
         last_send = std::chrono::steady_clock::now();
         read_resps();
         for (size_t i = 0; i < DATA_SIZE*8; i++)

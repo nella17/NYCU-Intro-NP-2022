@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
 
     auto last_send = std::chrono::steady_clock::now();
     bool keep = false;
-    int r = 0, k = 2;
+    int r = 0;
     hdr_t send_hdr{
         .data_seq = 0
     };
@@ -193,9 +193,9 @@ int main(int argc, char *argv[]) {
         if (!keep and (comp_size / DATA_SIZE) - recvbit.count() < 100)
             keep = true;
         auto now = std::chrono::steady_clock::now();
-        if (now - last_send > std::chrono::milliseconds(keep ? 10 : int(1000 / k))) {
+        if (now - last_send > std::chrono::milliseconds(keep ? 10 : SEND_TIME)) {
             last_send = now;
-            fprintf(stderr, "[/] %2.2f send %lu ack\n", ++r / double(k), recvbit.count());
+            fprintf(stderr, "[/] %2.2f send %lu ack\n", ++r / double(SEND_WAIT), recvbit.count());
             do_reponse(listenfd, &csin, send_hdr);
         }
     }

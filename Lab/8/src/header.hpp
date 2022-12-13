@@ -53,3 +53,6 @@ constexpr size_t PACKET_SIZE = sizeof(hdr_t);
 
 constexpr size_t BANDWIDTH = 10 * 1024 * 1024 / 8;
 constexpr size_t WINDOW_SIZE = 64;
+
+constexpr int SEND_WAIT = 2;
+constexpr int SEND_TIME = 1000 / SEND_WAIT;
