@@ -74,8 +74,8 @@ The format of a zone file containing records of a domain is defined as follows.
 
 ```
 <domain>
-<NAME>,<TYPE>,<CLASS>,<TTL>,<RDATA>
-<NAME>,<TYPE>,<CLASS>,<TTL>,<RDATA>
+<NAME>,<TTL>,<TYPE>,<CLASS>,<RDATA>
+<NAME>,<TTL>,<TYPE>,<CLASS>,<RDATA>
 ...
 ```
     
