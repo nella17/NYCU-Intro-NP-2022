@@ -62,7 +62,7 @@ signed main(int argc, char* argv[]) {
         }
 
         auto now = std::chrono::steady_clock::now();
-        if (now - last_send > std::chrono::milliseconds(200)) {
+        if (now - last_send > std::chrono::milliseconds(500)) {
             last_send = now;
             fprintf(stderr, "[/] send %lu ack\n", recvbit.count());
             send(sockfd, send_pkt, broad);

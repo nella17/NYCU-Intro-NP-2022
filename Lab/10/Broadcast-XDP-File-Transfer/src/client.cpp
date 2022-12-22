@@ -106,7 +106,7 @@ signed main(int argc, char* argv[]) {
             pkt.header.sess_seq = key;
             memcpy(pkt.data, data.data, data.data_size);
             send(sockfd, pkt, broad);
-            usleep(500);
+            usleep(1);
         }
         read_resps();
         for (size_t i = 0; i < DATA_SIZE*8; i++)
