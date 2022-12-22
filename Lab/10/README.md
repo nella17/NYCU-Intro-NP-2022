@@ -6,7 +6,7 @@ Date: 2022-12-22
 
 # Broadcast XDP File Transfer
 
-This lab aims to practice implementing a broadcast and raw socket program. The objective is to send 1000 files from a client to a server, just like the scenario we used in the [Robust UDP Challenge](https://md.zoolab.org/s/zniK2CzAA). The link quality between the client and the server is good. However, the network settings reject all packets delivered using well-known transport protocols, including TCP, UDP, and SCTP. Packets sent to unicast addresses are dropped as well. You (and your team members) have to implement both the server and the client. We do not have a spec for the protocol. You can decide how to transmit the files by yourself. Once you have completed your implementations, you can upload your compiled server and client to our challenge server for evaluation. Good luck, and have fun!
+This lab aims to practice implementing a broadcast and raw socket program. The objective is to send 1000 files from a client to a server, just like the scenario we used in the [Robust UDP Challenge](https://md.zoolab.org/s/zniK2CzAA). The link quality between the client and the server is good. However, the network settings reject all packets delivered using well-known transport protocols, including TCP, UDP, and SCTP. Packets sent to unicast addresses are dropped as well. You have to implement both the server and the client. We do not have a spec for the protocol. You can decide how to transmit the files by yourself. Once you have completed your implementations, you can upload your compiled server and client to our challenge server for evaluation. Good luck, and have fun!
 
 ## The Challenge Server
 
@@ -76,6 +76,17 @@ In our demonstration, you can see messages like those in the below screenshot. H
 
 ![submit-xdpecho-ping](https://inp111.zoolab.org/lab10/submit-xdpecho-ping.png)
 
+## Hints
+
+- You have to specify your selected protocl number when creating a raw socket. In our sample code, we use protocl number 161. The sample code is `socket(AF_INET, SOCK_RAW, proto_number)`.
+
+- You have to ***fill the IP header by yourself***, because our runtime evaluation environment run both your server and client on the same host. In this case, broadcasting packets sent by process A on the host cannot be received by another process B on the same host (and vice versa). As we explained in the class, you can solve this problem by filling a non-local IP address, e.g., the broadcast address, in the source IP address field.
+
+- To fill the IP header by yourself, you can enable the IP_HDRINCL option for a created raw socket. Don't forget to ensure that your IP packet has a correct checksum.
+
+- The data structure of the IP header can be found in `/usr/include/netinet/ip.h`. Please `#include <netinet/ip.h>` and then you can use the structure `ip` declared in the header file. Here is an online version [ip.h](https://inp111.zoolab.org/code.html?file=lab10/ip.h) for your convenience. 
+
+- One final note: You have to enable SO_BROADCAST option for your raw socket.
 
 ## Grading
 
