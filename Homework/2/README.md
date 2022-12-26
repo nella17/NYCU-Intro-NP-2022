@@ -1,7 +1,7 @@
 # INP111 Homework 02 Week #15 (2022-12-15)
 
 Date: 2022-12-15
-<span style="color:red">Due Date: 2022-01-05</span>
+<span style="color:red">Due Date: 2023-01-05</span>
 
 [TOC]
 
@@ -30,7 +30,7 @@ Additional remarks on the behavior of the DNS server are summarized as follows. 
 The protocol message format used by DNS servers is defined in [RFC 1035](https://www.rfc-editor.org/rfc/rfc1035) and section 2 of [RFC 3596](https://www.rfc-editor.org/rfc/rfc3596).
 
 :::success
-In this homework, you only need to implement standard queries and responses. You do not need to consider the situation when OPCODE and RD are not 0.
+In this homework, you only need to implement standard queries and responses. You do not need to consider the situation when OPCODE is not 0.
 :::
 
 
@@ -74,8 +74,8 @@ The format of a zone file containing records of a domain is defined as follows.
 
 ```
 <domain>
-<NAME>,<TTL>,<TYPE>,<CLASS>,<RDATA>
-<NAME>,<TTL>,<TYPE>,<CLASS>,<RDATA>
+<NAME>,<TTL>,<CLASS>,<TYPE>,<RDATA>
+<NAME>,<TTL>,<CLASS>,<TYPE>,<RDATA>
 ...
 ```
     
