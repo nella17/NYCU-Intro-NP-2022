@@ -4,6 +4,8 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 
+#include <iostream>
+
 #include "server.hpp"
 #include "utils.hpp"
 
@@ -23,7 +25,37 @@ Server::Server(uint16_t listenport, const char config_path[]): config(config_pat
 
 	if (bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0)
         fail("bind");
+
+    connfd = connect(config.forwardIP, 53);
 }
 
 void Server::interactive() {
+    struct sockaddr_in cliaddr;
+    socklen_t clilen;
+    char buf[2048];
+    size_t sz;
+    ssize_t ssz;
+    while (true) {
+        bzero(&cliaddr, sizeof(cliaddr));
+        clilen = sizeof(cliaddr);
+        if ((ssz = recvfrom(listenfd, buf, sizeof(buf), 0, (struct sockaddr*) &cliaddr, &clilen)) < 0) fail("recvfrom");
+        sz = (size_t)ssz;
+        if (VERBOSE >= 1) {
+            char* info = sock_info(&cliaddr);
+            std::cout << "[*] query from " << info << std::endl;
+            free(info);
+        }
+
+        if (VERBOSE >= 2)
+            std::cout << hexdump({ buf, sz });
+
+        if (send(connfd, buf, sz, 0) < 0)
+            fail("send(connfd)");
+        if ((ssz = recv(connfd, buf, sizeof(buf), 0)) < 0) fail("recv(connfd)");
+        sz = (size_t)ssz;
+        if (sendto(listenfd, buf, sz, 0, (struct sockaddr*) &cliaddr, clilen) < 0)
+            fail("sendto(listenfd)");
+        if (VERBOSE >= 2)
+            std::cout << "[*] answer from " << config.forwardIP << '\n' << hexdump({ buf, sz });
+    }
 }

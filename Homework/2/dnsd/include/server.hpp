@@ -11,5 +11,5 @@ public:
 
 private:
     Config config;
-    int listenfd;
+    int listenfd, connfd;
 };

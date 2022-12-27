@@ -19,11 +19,8 @@ Config::Config(const char config_path_s[]) {
     auto config = fopen(config_path.c_str(), "r");
     if (!config) fail("open(config)");
 
-    char ip[20];
-    fscanf(config, "%19s", ip);
-    printf("[config] forwardIP: '%s'\n", ip);
-    if (inet_pton(AF_INET, ip, &forwardIP) <= 0)
-        fail("inet_pton(forwardIP)");
+    fscanf(config, "%19s", forwardIP);
+    printf("[config] forwardIP: '%s'\n", forwardIP);
 
     char domain[256], path[512];
     while (fscanf(config, " %255[^,],%511s", domain, path) != EOF) {

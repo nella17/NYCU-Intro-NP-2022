@@ -6,7 +6,7 @@
 
 class Config {
 public:
-    uint32_t forwardIP;
+    char forwardIP[20];
 
     Config(const char[]);
 };

@@ -20,6 +20,24 @@ void fail(const char* s) {
 #endif
 }
 
+int connect(const char* host, uint16_t port) {
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sockfd < 0)
+        perror("sockfd"), exit(-1);
+
+    struct sockaddr_in servaddr;
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(port);
+    if (inet_pton(AF_INET, host, &servaddr.sin_addr) <= 0)
+        fail("inet_pton");
+
+    if (connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)
+        fail("connect");
+
+    return sockfd;
+}
+
 char* sock_info(const struct sockaddr_in* sock) {
     char buf[64], host[16];
     sprintf(buf, "%s:%d", inet_ntop(AF_INET, &sock->sin_addr, host, 16), ntohs(sock->sin_port));
