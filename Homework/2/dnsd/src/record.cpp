@@ -71,10 +71,7 @@ std::ostream& operator<<(std::ostream& os, const Record& rr) {
     os  << ' ' << enum_name(rr.type)
         << ' ' << enum_name(rr.clas)
         << ' ' << std::dec << rr.ttl
-        << ' ' << rr.data << '\n'
-        << rr.rdata.size() << ':';
-    for (auto c: rr.rdata)
-        os << ' ' << std::hex << std::setw(2) << std::setfill('0') << (uint32_t)(uint8_t)(c);
+        << ' ' << rr.data;
     return os;
 }
 

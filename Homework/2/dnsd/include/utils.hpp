@@ -7,6 +7,8 @@
 
 #include "enum.hpp"
 
+constexpr int VERBOSE = 2;
+
 void fail(const char* s);
 
 char* sock_info(const struct sockaddr_in* sock);
@@ -33,3 +35,5 @@ inline std::string& operator+=(std::string& s, uint32_t t) {
     s.append((char*)&t, sizeof(t));
     return s;
 }
+
+std::string hexdump(std::string);

@@ -5,6 +5,8 @@
 
 #include <iostream>
 #include <filesystem>
+#include <string_view>
+#include <ranges>
 namespace fs = std::filesystem;
 
 #include "config.hpp"
@@ -45,7 +47,17 @@ Config::Config(const char config_path_s[]) {
             sscanf(buf, " %255[^,],%d,%4[^,],%9[^,],%511[^\r\n]", name, &ttl, clas, type, rdata);
             // printf("[config] [%s] '%s' '%d' '%s' '%s' '%s'\n", domain, name, ttl, clas, type, rdata);
             Record rr(s2dn(name) + s2dn(domain), s2type(type), s2clas(clas), ttl, rdata);
-            std::cout << "[config] " << rr << std::endl;
+            if (VERBOSE >= 1)
+                std::cout << "   " << rr << std::endl;
+            if (VERBOSE >= 2) {
+                auto dump = hexdump(rr.rdata);
+                for(auto s: dump
+                        | std::ranges::views::split('\n')
+                        | std::ranges::views::transform([](auto &&rng) {
+                            return std::string_view(&*rng.begin(), std::ranges::distance(rng));
+                        }) )
+                    std::cout << "      " << s << std::endl;
+            }
         }
         fclose(zone_file);
     }

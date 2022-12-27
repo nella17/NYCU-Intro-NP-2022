@@ -47,3 +47,22 @@ std::string inet_pton(int af, std::string data) {
     assert(inet_pton(af, data.c_str(), buf) == 1);
     return { buf, sz };
 }
+
+std::string hexdump(std::string data) {
+    std::stringstream ss;
+    size_t sz = data.size();
+    ss << std::hex << std::setfill('0');
+    for(size_t i = 0, j; i < sz; i += 16) {
+        if (i) ss << '\n';
+        ss << std::setw(4) << i << ':';
+        for(j = 0; j < 16 and i + j < sz; j++)
+            ss << ' ' << std::setw(2) << (uint32_t)(uint8_t)data[i+j];
+        for(; j < 16; j++) ss << "   ";
+        ss << ' ';
+        for(j = 0; j < 16 and i + j < sz; j++)
+            ss << (isprint(data[i+j]) ? data[i+j] : '.');
+        for(; j < 16; j++) ss << " ";
+    }
+    ss << "  " << std::dec << sz << '\n';
+    return ss.str();
+}
