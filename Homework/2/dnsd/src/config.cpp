@@ -1,5 +1,3 @@
-#include "config.hpp"
-
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,6 +7,7 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
+#include "config.hpp"
 #include "utils.hpp"
 
 Config::Config(const char config_path_s[]) {

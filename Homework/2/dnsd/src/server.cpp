@@ -1,11 +1,10 @@
-#include "server.hpp"
-
 #include <unistd.h>
 #include <strings.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 
+#include "server.hpp"
 #include "utils.hpp"
 
 Server::Server(uint16_t listenport, const char config_path[]): config(config_path) {

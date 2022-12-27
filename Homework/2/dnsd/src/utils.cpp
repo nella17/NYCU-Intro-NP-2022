@@ -1,5 +1,3 @@
-#include "utils.hpp"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +5,12 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+
+#include "utils.hpp"
 
 void fail(const char* s) {
     if (errno) perror(s);

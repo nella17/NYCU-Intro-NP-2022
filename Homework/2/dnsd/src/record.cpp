@@ -1,13 +1,13 @@
-#include "record.hpp"
-
 #include <string.h>
-#include <arpa/inet.h>
-#include <iostream>
-#include <iomanip>
 #include <strings.h>
+#include <arpa/inet.h>
+
+#include <iostream>
+#include <string_view>
 #include <sstream>
 #include <ranges>
-#include <string_view>
+
+#include "record.hpp"
 #include "utils.hpp"
 
 Record::Record(DN _domain, TYPE _type, CLAS _clas, uint32_t _ttl, std::string _data):

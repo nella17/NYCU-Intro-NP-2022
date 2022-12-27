@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <string>
 #include <vector>
+
 #include "enum.hpp"
 
 void fail(const char* s);

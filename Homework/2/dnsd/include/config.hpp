@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+
 #include "record.hpp"
 
 class Config {
