@@ -20,3 +20,4 @@ google.loc.
 @,3600,IN,TXT,globalsign-smime-dv=CDYX+XFHUw2wml6/Gb8+59BsH31KzUr6c1l2BPvqKX8=
 @,3600,IN,TXT,onetrust-domain-verification=de01ed21f2fa4d8781cbc3ffb89cf4ef
 @,3600,IN,TXT,docusign=05958488-4752-4ef2-95eb-aa7ba8a3bd0e
+qaq,3600,IN,CNAME,meow.meow.
