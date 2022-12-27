@@ -11,7 +11,7 @@
 #include "utils.hpp"
 
 Record::Record(DN _domain, TYPE _type, CLAS _clas, uint32_t _ttl, std::string _data):
-    domain(_domain), type(_type), clas(_clas), ttl(_ttl), data(_data), rdata(rd2data(_type, _data)) {}
+    domain(_domain), type(_type), clas(_clas), ttl(_ttl), data(_data) {}
 
 inline std::string parseSOA(const std::string data) {
     std::stringstream ss(data);
@@ -40,7 +40,8 @@ inline std::string parseMX(const std::string data) {
     return rdata;
 }
 
-std::string rd2data(const TYPE type, const std::string data) {
+
+std::string Record::rdata() {
     std::string ret;
     switch (type) {
         case TYPE::A:

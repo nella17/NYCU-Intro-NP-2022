@@ -13,11 +13,11 @@ public:
     const TYPE type;
     const CLAS clas;
     const uint32_t ttl;
-    const std::string data, rdata;
+    const std::string data;
     Record(DN, TYPE, CLAS, uint32_t, std::string);
+    std::string rdata();
 };
 
-std::string rd2data(const TYPE, const std::string);
 std::ostream& operator<<(std::ostream&, const Record&);
 
 DN s2dn(std::string);

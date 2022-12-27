@@ -45,7 +45,7 @@ Config::Config(const char config_path_s[]) {
             if (VERBOSE >= 1)
                 std::cout << "   " << rr << std::endl;
             if (VERBOSE >= 2)
-                std::cout << HEX{ 6, rr.rdata };
+                std::cout << HEX{ 6, rr.rdata() };
         }
         fclose(zone_file);
     }
