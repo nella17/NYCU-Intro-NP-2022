@@ -1,2 +1,3 @@
 bin
 obj
+include/magic_enum.hpp

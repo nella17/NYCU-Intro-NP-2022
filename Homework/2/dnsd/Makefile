@@ -37,16 +37,17 @@ docs:
 
 all: build run
 
-$(EXE): dirs $(OBJS)
+$(EXE): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(L_FLAGS) $(OBJS) -o $@
 
 -include $(DEPS)
 
-$(ODIR)/%.o: $(SDIR)/%.cpp
+$(ODIR)/%.o: $(SDIR)/%.cpp | dirs
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -MP -MMD -c $< -o $@
 
 dirs:
 	@mkdir -p $(BDIR) $(ODIR)
+	test -f include/magic_enum.hpp || wget https://raw.githubusercontent.com/Neargye/magic_enum/v0.8.2/include/magic_enum.hpp -O include/magic_enum.hpp
 
 clean:
 	$(RM) -r obj bin
