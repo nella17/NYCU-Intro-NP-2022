@@ -1,8 +1,6 @@
 #include "server.hpp"
 
-#include <fcntl.h>
 #include <unistd.h>
-#include <stdio.h>
 #include <strings.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -10,7 +8,7 @@
 
 #include "utils.hpp"
 
-Server::Server(uint16_t listenport, const char config_path[]) {
+Server::Server(uint16_t listenport, const char config_path[]): config(config_path) {
 	listenfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (listenfd < 0) fail("listenfd");
 
@@ -26,10 +24,6 @@ Server::Server(uint16_t listenport, const char config_path[]) {
 
 	if (bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0)
         fail("bind");
-
-    auto config = fopen(config_path, "r");
-    if (!config) fail("open config");
-    fclose(config);
 }
 
 void Server::interactive() {

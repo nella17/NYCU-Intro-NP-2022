@@ -1,0 +1,22 @@
+google.loc.
+@,3600,IN,A,142.251.43.14
+@,3600,IN,AAAA,2404:6800:4012:3::200e
+@,3600,IN,NS,ns1.google.loc.
+@,3600,IN,NS,ns2.google.loc.
+@,3600,IN,NS,ns3.google.loc.
+@,3600,IN,NS,ns4.google.loc.
+@,3600,IN,CNAME,meow.meow.
+@,3600,IN,SOA,ns1.google.loc. dns-admin.google.loc. 496879129 900 900 1800 60
+@,3600,IN,MX,10 smtp.google.loc.
+@,3600,IN,TXT,apple-domain-verification=30afIBcvSuDV2PLX
+@,3600,IN,TXT,google-site-verification=wD8N7i1JTNTkezJ49swvWW48f8_9xveREV4oB-0Hf5o
+@,3600,IN,TXT,google-site-verification=TV9-DBe4R80X4v0M4U_bd_J9cpOJM0nikft0jAgjmsQ
+@,3600,IN,TXT,webexdomainverification.8YX6G=6e6922db-e3e6-4a36-904e-a805c28087fa
+@,3600,IN,TXT,docusign=1b0a6754-49b1-4db5-8540-d2c12664b289
+@,3600,IN,TXT,MS=E4A68B9AB2BB9670BCE15412F62916164C0B20BB
+@,3600,IN,TXT,v=spf1 include:_spf.google.loc ~all
+@,3600,IN,TXT,atlassian-domain-verification=5YjTmWmjI92ewqkx2oXmBaD60Td9zWon9r6eakvHX6B77zzkFQto8PQ9QsKnbf4I
+@,3600,IN,TXT,facebook-domain-verification=22rm551cu4k0ab0bxsw536tlds4h95
+@,3600,IN,TXT,globalsign-smime-dv=CDYX+XFHUw2wml6/Gb8+59BsH31KzUr6c1l2BPvqKX8=
+@,3600,IN,TXT,onetrust-domain-verification=de01ed21f2fa4d8781cbc3ffb89cf4ef
+@,3600,IN,TXT,docusign=05958488-4752-4ef2-95eb-aa7ba8a3bd0e

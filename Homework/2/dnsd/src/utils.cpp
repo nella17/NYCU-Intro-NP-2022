@@ -26,3 +26,20 @@ char* sock_host(const struct sockaddr_in* sock) {
     inet_ntop(AF_INET, &sock->sin_addr, host, 16);
     return strdup(host);
 }
+
+std::string inet_pton(int af, std::string data) {
+    size_t sz = 0;
+    switch (af) {
+    case AF_INET:
+        sz = sizeof(struct in_addr);
+        break;
+    case AF_INET6:
+        sz = sizeof(struct in6_addr);
+        break;
+    }
+    if (!sz) return nullptr;
+    char buf[sz];
+    bzero(buf, sz);
+    assert(inet_pton(af, data.c_str(), buf) == 1);
+    return { buf, sz };
+}

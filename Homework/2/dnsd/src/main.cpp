@@ -14,9 +14,9 @@ int main(int argc, char* argv[]) {
     signal(SIGPIPE, SIG_IGN);
 
     auto listenport = (uint16_t)atoi(argv[1]);
-    auto config = argv[2];
+    auto config_path = argv[2];
 
-    Server server(listenport, config);
+    Server server(listenport, config_path);
     server.interactive();
 
     return 0;

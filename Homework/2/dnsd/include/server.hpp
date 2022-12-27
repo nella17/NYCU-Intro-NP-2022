@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "config.hpp"
 
 class Server {
 public:
@@ -8,5 +9,6 @@ public:
     void interactive();
 
 private:
+    Config config;
     int listenfd;
 };

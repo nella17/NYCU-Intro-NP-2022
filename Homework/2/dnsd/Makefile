@@ -7,7 +7,7 @@ IDIR		:= include
 
 CXX			?= g++
 INCLUDES	:= -I $(IDIR)
-C_FLAGS		:= -Wall -Wextra -Wshadow -std=c++17
+C_FLAGS		:= -Wall -Wextra -Wshadow -std=c++20
 L_FLAGS		:= -O2
 RC_FLAGS	:= 
 DC_FLAGS	:= -g -DDEBUG -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC -D_GLIBCXX_DEBUG_PEDANTIC_ASSERT
