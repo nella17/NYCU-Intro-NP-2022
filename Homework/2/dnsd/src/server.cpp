@@ -36,6 +36,8 @@ void Server::interactive() {
     size_t sz;
     ssize_t ssz;
     while (true) {
+        std::cout << std::endl;
+
         bzero(&cliaddr, sizeof(cliaddr));
         clilen = sizeof(cliaddr);
         if ((ssz = recvfrom(listenfd, buf, sizeof(buf), 0, (struct sockaddr*) &cliaddr, &clilen)) < 0) fail("recvfrom");
@@ -47,7 +49,7 @@ void Server::interactive() {
         }
 
         if (VERBOSE >= 2)
-            std::cout << hexdump({ buf, sz });
+            std::cout<< HEX{ 3,  { buf, sz } };
 
         if (send(connfd, buf, sz, 0) < 0)
             fail("send(connfd)");
@@ -55,7 +57,9 @@ void Server::interactive() {
         sz = (size_t)ssz;
         if (sendto(listenfd, buf, sz, 0, (struct sockaddr*) &cliaddr, clilen) < 0)
             fail("sendto(listenfd)");
+        if (VERBOSE >= 1)
+            std::cout << "[*] answer from " << config.forwardIP << std::endl;
         if (VERBOSE >= 2)
-            std::cout << "[*] answer from " << config.forwardIP << '\n' << hexdump({ buf, sz });
+            std::cout<< HEX{ 3,  { buf, sz } };
     }
 }

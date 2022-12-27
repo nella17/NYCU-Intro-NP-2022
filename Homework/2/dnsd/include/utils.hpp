@@ -38,4 +38,10 @@ inline std::string& operator+=(std::string& s, uint32_t t) {
     return s;
 }
 
+struct HEX {
+    int pad;
+    std::string data;
+};
+
 std::string hexdump(std::string);
+std::ostream& operator<<(std::ostream&, HEX);
