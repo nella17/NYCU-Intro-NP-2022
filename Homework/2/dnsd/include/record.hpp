@@ -4,8 +4,9 @@
 #include <vector>
 
 #include "enum.hpp"
+#include "dn.hpp"
 
-using DN = std::vector<std::string>;
+using Key = std::tuple<DN, TYPE, CLAS>;
 
 class Question {
 public:
@@ -13,23 +14,18 @@ public:
     const TYPE type;
     const CLAS clas;
     Question(DN, TYPE, CLAS);
+    Key key();
 };
 
-class Record {
+class Record: public Question {
 public:
-    const DN domain;
-    const TYPE type;
-    const CLAS clas;
     const uint32_t ttl;
     const std::string data;
     Record(DN, TYPE, CLAS, uint32_t, std::string);
     std::string rdata();
 };
 
-std::ostream& operator<<(std::ostream&, const DN&);
+using Records = std::vector<Record>;
+
 std::ostream& operator<<(std::ostream&, const Question&);
 std::ostream& operator<<(std::ostream&, const Record&);
-
-DN s2dn(std::string);
-std::string dn2data(DN);
-DN data2dn(char*&);

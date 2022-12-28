@@ -3,9 +3,7 @@
 #include <arpa/inet.h>
 
 #include <iostream>
-#include <string_view>
 #include <sstream>
-#include <ranges>
 
 #include "record.hpp"
 #include "utils.hpp"
@@ -13,8 +11,12 @@
 Question::Question(DN _domain, TYPE _type, CLAS _clas):
     domain(_domain), type(_type), clas(_clas) {}
 
+Key Question::key() {
+    return Key{ domain, type, clas };
+}
+
 Record::Record(DN _domain, TYPE _type, CLAS _clas, uint32_t _ttl, std::string _data):
-    domain(_domain), type(_type), clas(_clas), ttl(_ttl), data(_data) {}
+    Question(_domain, _type, _clas), ttl(_ttl), data(_data) {}
 
 inline std::string parseSOA(const std::string data) {
     std::stringstream ss(data);
@@ -69,11 +71,7 @@ std::string Record::rdata() {
     return ret;
 }
 
-std::ostream& operator<<(std::ostream& os, const DN& domain) {
-    for(auto label: domain | std::views::reverse)
-        os << label << '.';
-    return os;
-}
+
 std::ostream& operator<<(std::ostream& os, const Question& q) {
     os << q.domain
         << ' ' << enum_name(q.type)
@@ -87,39 +85,4 @@ std::ostream& operator<<(std::ostream& os, const Record& rr) {
         << ' ' << std::dec << rr.ttl
         << ' ' << rr.data;
     return os;
-}
-
-DN s2dn(std::string name) {
-    if (name == "@")
-        return {};
-    auto v = name
-        | std::ranges::views::split('.')
-        | std::ranges::views::transform([](auto &&rng) {
-            return std::string_view(&*rng.begin(), std::ranges::distance(rng));
-        });
-    DN domain(v.begin(), v.end());
-    std::reverse(domain.begin(), domain.end());
-    return domain;
-}
-
-std::string dn2data(DN domain) {
-    std::string data;
-    for(auto label: domain | std::views::reverse) {
-        data += (char)(uint8_t)label.size();
-        data += label;
-    }
-    data += '\0';
-    return data;
-}
-
-DN data2dn(char*& data) {
-    DN domain{};
-    while (*data) {
-        auto sz = (size_t)(uint8_t)*data;
-        domain.emplace_back(data + 1, sz);
-        data += 1 + sz;
-    }
-    data += 1;
-    std::reverse(domain.begin(), domain.end());
-    return domain;
 }
