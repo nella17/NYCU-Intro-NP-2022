@@ -10,7 +10,7 @@ INCLUDES	:= -I $(IDIR)
 C_FLAGS		:= -Wall -Wextra -Wshadow -std=c++20 -fpermissive
 L_FLAGS		:= -O2
 RC_FLAGS	:= 
-DC_FLAGS	:= -g -rdynamic -DDEBUG -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC -D_GLIBCXX_DEBUG_PEDANTIC_ASSERT
+DC_FLAGS	:= -g -rdynamic -DDEBUG -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC -D_GLIBCXX_DEBUG_PEDANTIC_ASSERT -fsanitize=address -fsanitize=undefined
 
 ifeq ($(DEBUG), 1)
 	CXXFLAGS := $(CXXFLAGS) $(C_FLAGS) $(DC_FLAGS)
