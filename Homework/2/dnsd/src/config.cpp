@@ -4,8 +4,6 @@
 #include <arpa/inet.h>
 
 #include <iostream>
-#include <filesystem>
-namespace fs = std::filesystem;
 
 #include "config.hpp"
 #include "utils.hpp"
@@ -24,30 +22,9 @@ Config::Config(const char config_path_s[]) {
     while (fscanf(config, " %255[^,],%511s", domain, path) != EOF) {
         fs::path zone_path = config_dir / path;
         printf("[config] zone '%s' -> '%s'\n", domain, zone_path.c_str());
-        auto zone_file = fopen(zone_path.c_str(), "r");
-        if (!zone_file) fail("open(zone)");
 
-        char buf[1024];
-        fgets(buf, 1024, zone_file);
-        char* save;
-        strtok_r(buf, "\r\n", &save);
-        if (strcmp(domain, buf) != 0) {
-            fprintf(stderr, "[config] '%s' != '%s'\n", domain, buf);
-            continue;
-        }
-
-        while (fgets(buf, 1024, zone_file)) {
-            char name[256], type[10], clas[5], rdata[512];
-            uint32_t ttl;
-            sscanf(buf, " %255[^,],%d,%4[^,],%9[^,],%511[^\r\n]", name, &ttl, clas, type, rdata);
-            // printf("[config] [%s] '%s' '%d' '%s' '%s' '%s'\n", domain, name, ttl, clas, type, rdata);
-            Record rr(s2dn(domain) + s2dn(name), v2type(type), v2clas(clas), ttl, rdata);
-            if (VERBOSE >= 1)
-                std::cout << "   " << rr << std::endl;
-            if (VERBOSE >= 2)
-                std::cout << HEX{ 6, rr.rdata() };
-        }
-        fclose(zone_file);
+        DN dn = s2dn(domain);
+        zones.try_emplace(dn, dn, zone_path);
     }
 
     fclose(config);
