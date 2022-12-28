@@ -103,3 +103,25 @@ std::ostream& operator<<(std::ostream& os, const Record& rr) {
         << ' ' << rr.data;
     return os;
 }
+
+Records niplike(DN domain, DN base) {
+    DN sub = domain - base;
+    reverse(sub.begin(), sub.end());
+    bool can = sub.size() == 5 and sub[4].size() < 62;
+    if (can) {
+        sub.pop_back();
+        for(auto label: sub) {
+            can &= label.size() <= 3;
+            for(auto x: label)
+                can &= '0' <= x and x <= '9';
+        }
+    }
+    if (!can) return {};
+    reverse(sub.begin(), sub.end());
+    auto data = dn2s(sub);
+    data.pop_back();
+    if (VERBOSE >= 1)
+        std::cout << "NIP: " << domain << " -> " << data << std::endl;
+    Record rr(domain, TYPE::A, CLAS::IN, 1, data);
+    return { rr };
+}

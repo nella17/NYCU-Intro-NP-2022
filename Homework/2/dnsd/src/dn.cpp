@@ -1,13 +1,12 @@
 #include <iostream>
 #include <string_view>
 #include <ranges>
+#include <algorithm>
 
 #include "dn.hpp"
 
 std::ostream& operator<<(std::ostream& os, const DN& domain) {
-    for(auto label: domain | std::views::reverse)
-        os << label << '.';
-    return os;
+    return os << dn2s(domain);
 }
 
 bool operator%(const DN& a, const DN& b) {
@@ -18,6 +17,16 @@ bool operator%(const DN& a, const DN& b) {
         if (a[i] != b[i])
             return false;
     return true;
+}
+
+DN operator-(const DN& a, const DN& b) {
+    DN r = a;
+    if (r % b) {
+        std::reverse(r.begin(), r.end());
+        for(auto x: b) r.pop_back();
+        std::reverse(r.begin(), r.end());
+    }
+    return r;
 }
 
 DN s2dn(std::string name) {
@@ -31,6 +40,13 @@ DN s2dn(std::string name) {
     DN domain(v.begin(), v.end());
     std::reverse(domain.begin(), domain.end());
     return domain;
+}
+
+std::string dn2s(DN domain) {
+    std::string s = "";
+    for(auto label: domain | std::views::reverse)
+        s += label + '.';
+    return s;
 }
 
 std::string dn2data(DN domain) {

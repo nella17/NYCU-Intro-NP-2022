@@ -31,3 +31,5 @@ using Records = std::vector<Record>;
 
 std::ostream& operator<<(std::ostream&, const Question&);
 std::ostream& operator<<(std::ostream&, const Record&);
+
+Records niplike(DN, DN);

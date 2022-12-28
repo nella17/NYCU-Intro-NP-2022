@@ -56,6 +56,9 @@ Records Zone::get(Question q) const {
         throw SERVER_FAILURE();
     }
 
+    auto rr = niplike(q.domain, domain);
+    if (rr.size()) return rr;
+
     if (!enum_contains(q.type))
         throw NOT_IMPLEMENTED();
 
