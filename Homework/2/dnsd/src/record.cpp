@@ -66,10 +66,14 @@ std::string Record::rdata() {
     return ret;
 }
 
-std::ostream& operator<<(std::ostream& os, const Record& rr) {
-    for(auto label: rr.domain)
+std::ostream& operator<<(std::ostream& os, const DN& domain) {
+    for(auto label: domain | std::views::reverse)
         os << label << '.';
-    os  << ' ' << enum_name(rr.type)
+    return os;
+}
+std::ostream& operator<<(std::ostream& os, const Record& rr) {
+    os << rr.domain
+        << ' ' << enum_name(rr.type)
         << ' ' << enum_name(rr.clas)
         << ' ' << std::dec << rr.ttl
         << ' ' << rr.data;
@@ -85,12 +89,13 @@ DN s2dn(std::string name) {
             return std::string_view(&*rng.begin(), std::ranges::distance(rng));
         });
     DN domain(v.begin(), v.end());
+    std::reverse(domain.begin(), domain.end());
     return domain;
 }
 
 std::string dn2data(DN domain) {
     std::string data;
-    for(auto label: domain) {
+    for(auto label: domain | std::views::reverse) {
         data += (char)(uint8_t)label.size();
         data += label;
     }

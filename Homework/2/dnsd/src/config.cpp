@@ -41,7 +41,7 @@ Config::Config(const char config_path_s[]) {
             uint32_t ttl;
             sscanf(buf, " %255[^,],%d,%4[^,],%9[^,],%511[^\r\n]", name, &ttl, clas, type, rdata);
             // printf("[config] [%s] '%s' '%d' '%s' '%s' '%s'\n", domain, name, ttl, clas, type, rdata);
-            Record rr(s2dn(name) + s2dn(domain), s2type(type), s2clas(clas), ttl, rdata);
+            Record rr(s2dn(domain) + s2dn(name), s2type(type), s2clas(clas), ttl, rdata);
             if (VERBOSE >= 1)
                 std::cout << "   " << rr << std::endl;
             if (VERBOSE >= 2)
