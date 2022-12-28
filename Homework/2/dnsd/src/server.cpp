@@ -34,34 +34,64 @@ void Server::interactive() {
     struct sockaddr_in cliaddr;
     socklen_t clilen;
     char buf[2048];
-    Header header;
-    size_t sz;
     ssize_t ssz;
     while (true) {
         std::cout << std::endl;
 
         bzero(&cliaddr, sizeof(cliaddr));
         clilen = sizeof(cliaddr);
-        if ((ssz = recvfrom(listenfd, buf, sizeof(buf), 0, (struct sockaddr*) &cliaddr, &clilen)) < 0) fail("recvfrom");
-        sz = (size_t)ssz;
+        ssz = recvfrom(listenfd, buf, sizeof(buf), 0, (struct sockaddr*) &cliaddr, &clilen);
+        if (ssz < 0) fail("recvfrom");
         if (VERBOSE >= 1) {
             char* info = sock_info(&cliaddr);
             std::cout << "[*] query from " << info << std::endl;
             free(info);
         }
 
-        header.parse(buf);
+        auto res = query({ buf, (size_t)ssz });
+        if (VERBOSE >= 2) {
+            Header header;
+            header.parse(res.c_str());
+            std::cout<< PAD{ 3, hexdump(res) } << PAD{ 6, header };
+        }
 
-        if (send(connfd, buf, sz, 0) < 0)
-            fail("send(connfd)");
-        if ((ssz = recv(connfd, buf, sizeof(buf), 0)) < 0) fail("recv(connfd)");
-        sz = (size_t)ssz;
-
-        if (sendto(listenfd, buf, sz, 0, (struct sockaddr*) &cliaddr, clilen) < 0)
+        if (sendto(listenfd, res.c_str(), res.size(), 0, (struct sockaddr*) &cliaddr, clilen) < 0)
             fail("sendto(listenfd)");
-        if (VERBOSE >= 1)
-            std::cout << "[*] answer from " << config.forwardIP << std::endl;
-
-        header.parse(buf);
     }
+}
+
+std::string Server::query(std::string qs) {
+    Header header;
+    header.parse(qs.c_str());
+    if (VERBOSE >= 2)
+        std::cout<< PAD{ 3, hexdump(qs) } << PAD{ 6, header };
+
+    // TODO: handle multiple question
+    assert(header.QDCOUNT == 1);
+    auto q = header.question[0];
+    
+    for(auto dn = q.domain; dn.size(); dn.pop_back()) {
+        try {
+            auto rrs = config.get(dn).get(q);
+            for(auto rr: rrs)
+                header.answer.emplace_back(rr);
+            return header.dump();
+        } catch (...) {
+        }
+    }
+
+    if (VERBOSE >= 1)
+        std::cout << "[*] answer from " << config.forwardIP << std::endl;
+
+    return forward(qs);
+}
+
+std::string Server::forward(std::string qs) {
+    if (send(connfd, qs.c_str(), qs.size(), 0) < 0)
+        fail("send(connfd)");
+    char buf[2048];
+    ssize_t ssz;
+    ssz = recv(connfd, buf, sizeof(buf), 0);
+    if (ssz < 0) fail("recv(connfd)");
+    return { buf, (size_t)ssz };
 }

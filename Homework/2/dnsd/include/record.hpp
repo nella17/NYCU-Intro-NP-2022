@@ -15,6 +15,7 @@ public:
     const CLAS clas;
     Question(DN, TYPE, CLAS);
     Key key();
+    virtual std::string dump();
 };
 
 class Record: public Question {
@@ -23,6 +24,7 @@ public:
     const std::string data;
     Record(DN, TYPE, CLAS, uint32_t, std::string);
     std::string rdata();
+    virtual std::string dump();
 };
 
 using Records = std::vector<Record>;

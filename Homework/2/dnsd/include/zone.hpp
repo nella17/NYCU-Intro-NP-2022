@@ -13,5 +13,5 @@ class Zone {
 public:
     Zone(DN, fs::path);
     bool add(Record);
-    Records get(Question);
+    Records get(Question) const;
 };

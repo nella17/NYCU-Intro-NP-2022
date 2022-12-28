@@ -58,19 +58,19 @@ void Header::parse(const void* _msg) {
     }
 }
 
-void* Header::dump() {
-    std::string data{};
-    // for(auto& q: question  ) data += q.dump();
-    // for(auto& [sz,v]: ans)
-    //     for(auto& a: v) data += a.dump();
-    auto msg = (Message*)malloc(MSG_SIZE + data.size());
+std::string Header::dump() {
+    QR = 1; Z = 0; RD = 0; RA = 0;
+    std::string data(MSG_SIZE, 0);
+    auto msg = (Message*)data.c_str();
     memcpy(msg, buf, MSG_SIZE);
     msg->ID      = ntohs(ID);
-    msg->QDCOUNT = htons(QDCOUNT);
-    msg->ANCOUNT = htons(ANCOUNT);
-    msg->NSCOUNT = htons(NSCOUNT);
-    msg->ARCOUNT = htons(ARCOUNT);
-    return msg;
+    msg->QDCOUNT = htons(QDCOUNT = (uint16_t)question.size());
+    msg->ANCOUNT = htons(ANCOUNT = (uint16_t)answer.size());
+    msg->NSCOUNT = htons(NSCOUNT = (uint16_t)authority.size());
+    msg->ARCOUNT = htons(ARCOUNT = (uint16_t)additional.size());
+    for(auto& q: question) data += q.dump();
+    for(auto& [sz,v]: ans) for(auto& a: v) data += a.dump();
+    return data;
 }
 
 std::ostream& operator<<(std::ostream& os, const Header& m) {

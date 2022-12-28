@@ -48,7 +48,7 @@ bool Zone::add(Record rr) {
     return true;
 }
 
-Records Zone::get(Question q) {
+Records Zone::get(Question q) const {
     if (not(q.domain % domain)) {
         std::cerr << "Get " << q.domain << " not in " << domain << std::endl;
         exit(-1);

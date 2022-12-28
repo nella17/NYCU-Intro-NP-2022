@@ -47,7 +47,7 @@ public:
     std::vector<std::pair<uint16_t&,std::vector<Record>&>> ans;
     Header();
     void parse(const void*);
-    void* dump();
+    std::string dump();
 };
 
 std::ostream& operator<<(std::ostream&, const Header&);

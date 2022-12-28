@@ -15,6 +15,13 @@ Key Question::key() {
     return Key{ domain, type, clas };
 }
 
+std::string Question::dump() {
+    auto r = dn2data(domain);
+    r += (uint16_t)type;
+    r += (uint16_t)clas;
+    return r;
+}
+
 Record::Record(DN _domain, TYPE _type, CLAS _clas, uint32_t _ttl, std::string _data):
     Question(_domain, _type, _clas), ttl(_ttl), data(_data) {}
 
@@ -71,6 +78,16 @@ std::string Record::rdata() {
     return ret;
 }
 
+std::string Record::dump() {
+    auto r = dn2data(domain);
+    r += (uint16_t)type;
+    r += (uint16_t)clas;
+    r += ttl;
+    auto rd = rdata();
+    r += (uint16_t)rd.size();
+    r += rd;
+    return r;
+}
 
 std::ostream& operator<<(std::ostream& os, const Question& q) {
     os << q.domain

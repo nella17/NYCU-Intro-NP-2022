@@ -11,4 +11,5 @@ public:
     std::map<DN, Zone> zones;
 
     Config(const char[]);
+    const Zone& get(DN);
 };

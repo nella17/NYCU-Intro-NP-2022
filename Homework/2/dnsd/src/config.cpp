@@ -29,3 +29,10 @@ Config::Config(const char config_path_s[]) {
 
     fclose(config);
 }
+
+const Zone& Config::get(DN domain) {
+    auto it = zones.find(domain);
+    if (it == zones.end())
+        throw -1;
+    return it->second;
+}
