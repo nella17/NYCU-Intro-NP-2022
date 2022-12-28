@@ -6,12 +6,24 @@
 
 #include "record.hpp"
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define MSG_FLAG \
+    struct __attribute__((packed)) { \
+        unsigned RD:1, TC:1, AA:1, Opcode:4, QR:1; \
+        unsigned RCODE:4, Z:3, RA:1; \
+    }
+#else
+#define MSG_FLAG \
+    struct __attribute__((packed)) { \
+        unsigned QR:1, Opcode:4, AA:1, TC:1, RD:1; \
+        unsigned RA:1, Z:3, RCODE:4; \
+    }
+#endif
+
 struct Message {
     struct {
         uint16_t ID;
-        struct __attribute__((packed)) {
-            unsigned QR:1, Opcode:4, AA:1, TC:1, RD:1, RA:1, Z:3, RCODE:4;
-        };
+        MSG_FLAG;
         uint16_t QDCOUNT, ANCOUNT, NSCOUNT, ARCOUNT;
     };
     char buf[];
@@ -25,9 +37,7 @@ public:
         char buf[MSG_SIZE];
         struct {
             uint16_t ID;
-            struct __attribute__((packed)) {
-                unsigned QR:1, Opcode:4, AA:1, TC:1, RD:1, RA:1, Z:3, RCODE:4;
-            };
+            MSG_FLAG;
             uint16_t QDCOUNT, ANCOUNT, NSCOUNT, ARCOUNT;
         };
     };

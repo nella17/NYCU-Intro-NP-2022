@@ -27,7 +27,6 @@ void Header::parse(const void* _msg) {
     auto msg = (const Message*)_msg;
     memcpy(buf, msg, MSG_SIZE);
     ID      = ntohs(msg->ID);
-    // TODO: Opcode = ntoh(msg->Opcode);
     QDCOUNT = ntohs(msg->QDCOUNT);
     ANCOUNT = ntohs(msg->ANCOUNT);
     NSCOUNT = ntohs(msg->NSCOUNT);
@@ -67,7 +66,6 @@ void* Header::dump() {
     auto msg = (Message*)malloc(MSG_SIZE + data.size());
     memcpy(msg, buf, MSG_SIZE);
     msg->ID      = ntohs(ID);
-    // TODO: msg->Opcode = hton(Opcode);
     msg->QDCOUNT = htons(QDCOUNT);
     msg->ANCOUNT = htons(ANCOUNT);
     msg->NSCOUNT = htons(NSCOUNT);
