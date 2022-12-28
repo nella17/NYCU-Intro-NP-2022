@@ -16,6 +16,7 @@ namespace fs = std::filesystem;
 constexpr int VERBOSE = 2;
 
 void fail(const char* s);
+void bt();
 
 int connect(const char* host, uint16_t port);
 

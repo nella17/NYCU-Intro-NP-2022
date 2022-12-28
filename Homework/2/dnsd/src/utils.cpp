@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <execinfo.h>
 #include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -18,6 +19,13 @@ void fail(const char* s) {
 #ifdef DEBUG
     exit(-1);
 #endif
+}
+
+void bt() {
+    constexpr int SIZE = 100;
+    void *buffer[SIZE] = {};
+    int nptrs = backtrace(buffer, SIZE);
+    backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO);
 }
 
 int connect(const char* host, uint16_t port) {

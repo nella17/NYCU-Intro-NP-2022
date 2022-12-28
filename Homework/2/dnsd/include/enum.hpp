@@ -6,6 +6,8 @@
 using magic_enum::enum_name;
 using magic_enum::enum_cast;
 
+#include "utils.hpp"
+
 enum class TYPE: uint16_t {
     A     =  1,
     AAAA  = 28,
@@ -32,6 +34,7 @@ inline E v2e(T s) {
     for(auto& [_e,_s]: entries)
         std::cerr << ' ' << static_cast<magic_enum::underlying_type_t<E>>(_e) << ' ' << _s << '\n';
     std::cerr << " Query: " << s << std::endl;
+    bt();
     return E(0);
 }
 
