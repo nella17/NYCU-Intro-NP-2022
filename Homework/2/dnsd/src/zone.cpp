@@ -53,8 +53,11 @@ bool Zone::add(Record rr) {
 Records Zone::get(Question q) const {
     if (not(q.domain % domain)) {
         std::cerr << "Get " << q.domain << " not in " << domain << std::endl;
-        exit(-1);
+        throw SERVER_FAILURE();
     }
+
+    if (!enum_contains(q.type))
+        throw NOT_IMPLEMENTED();
 
     auto it = rrs.find(q.key());
     if (it != rrs.end())

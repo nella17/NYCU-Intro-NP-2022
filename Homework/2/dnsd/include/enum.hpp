@@ -1,10 +1,12 @@
 #pragma once
 
 #include <iostream>
+#include <concepts>
 
 #include "magic_enum.hpp"
 using magic_enum::enum_name;
 using magic_enum::enum_cast;
+using magic_enum::enum_contains;
 
 #include "utils.hpp"
 
@@ -25,17 +27,22 @@ enum class CLAS: uint16_t {
     HS = 4,
 };
 
+template<typename E, typename T, std::enable_if_t<!std::is_integral<T>::value, int> = 0>
+inline E T2E(T) { return E(-1); }
+template<typename E, typename T, std::enable_if_t<std::is_integral<T>::value, int> = 0>
+inline E T2E(T v) { return E(v); }
+
 template<typename E, typename T>
-inline E v2e(T s) {
-    auto e = enum_cast<E>(s);
+inline E v2e(T v) {
+    auto e = enum_cast<E>(v);
     if (e.has_value())
         return e.value();
     constexpr auto entries = magic_enum::enum_entries<E>();
     for(auto& [_e,_s]: entries)
         std::cerr << ' ' << static_cast<magic_enum::underlying_type_t<E>>(_e) << ' ' << _s << '\n';
-    std::cerr << " Query: " << s << std::endl;
+    std::cerr << " Query: " << v << std::endl;
     bt();
-    return E(0);
+    return T2E<E>(v);
 }
 
 template<typename T>

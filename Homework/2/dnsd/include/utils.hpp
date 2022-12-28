@@ -15,7 +15,7 @@ namespace fs = std::filesystem;
 
 constexpr int VERBOSE = 2;
 
-
+class SERVER_FAILURE {};
 class NAME_ERROR {};
 class NOT_IMPLEMENTED {};
 

@@ -71,7 +71,7 @@ std::string Server::query(std::string qs) {
     auto q = header.question[0];
     
     for(auto dn = q.domain; dn.size(); dn.pop_back()) {
-        try {
+        if (config.has(dn)) {
             auto zone = config.get(dn);
             header.AA = 1; header.RD = 1; header.RA = 0;
             try {
@@ -85,9 +85,11 @@ std::string Server::query(std::string qs) {
                 header.authority = zone.get(TYPE::SOA);
             } catch (NOT_IMPLEMENTED) {
                 header.RCODE = 4;
+            } catch (...) {
+                std::cerr << "unknown error" << std::endl;
+                header.RCODE = 2;
             }
             return header.dump();
-        } catch (...) {
         }
     }
 
