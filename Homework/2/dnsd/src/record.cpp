@@ -22,8 +22,20 @@ std::string Question::dump() {
     return r;
 }
 
+inline DN parse(TYPE type, std::string data) {
+    switch (type) {
+        case TYPE::NS:
+        case TYPE::CNAME:
+            return s2dn(data);
+        case TYPE::MX:
+            return s2dn(data.substr(data.find(' ')+1));
+        default:
+            return {};
+    }
+}
+
 Record::Record(DN _domain, TYPE _type, CLAS _clas, uint32_t _ttl, std::string _data):
-    Question(_domain, _type, _clas), ttl(_ttl), data(_data) {}
+    Question(_domain, _type, _clas), ttl(_ttl), data(_data), datadn(parse(_type, _data)) {}
 
 inline std::string dumpSOA(const std::string data) {
     std::stringstream ss(data);
@@ -100,7 +112,8 @@ std::ostream& operator<<(std::ostream& os, const Record& rr) {
         << ' ' << enum_name(rr.type)
         << ' ' << enum_name(rr.clas)
         << ' ' << std::dec << rr.ttl
-        << ' ' << rr.data;
+        << ' ' << rr.data
+        << ' ' << rr.datadn;
     return os;
 }
 

@@ -76,8 +76,10 @@ std::string Server::query(std::string qs) {
             header.AA = 1; header.RD = 1; header.RA = 0;
             try {
                 auto rrs = zone.get(q);
-                for(auto rr: rrs)
+                for(auto rr: rrs) {
                     header.answer.emplace_back(rr);
+                    header.additional += zone.getIP(rr.datadn);
+                }
                 if (q.type != TYPE::NS)
                     header.authority += zone.get(TYPE::NS);
             } catch (NAME_ERROR) {

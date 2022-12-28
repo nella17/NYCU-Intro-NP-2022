@@ -22,6 +22,7 @@ class Record: public Question {
 public:
     const uint32_t ttl;
     const std::string data;
+    const DN datadn;
     Record(DN, TYPE, CLAS, uint32_t, std::string);
     std::string rdata();
     virtual std::string dump();

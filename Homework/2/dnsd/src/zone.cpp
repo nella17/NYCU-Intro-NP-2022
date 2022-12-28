@@ -76,3 +76,12 @@ Records Zone::get(TYPE type, CLAS clas) const {
 
     throw NOT_IMPLEMENTED();
 }
+
+Records Zone::getIP(DN dn) const {
+    Records r{};
+    auto it = rrs.find({ dn, TYPE::A, CLAS::IN });
+    if (it != rrs.end()) r += it->second;
+    it = rrs.find({ dn, TYPE::AAAA, CLAS::IN });
+    if (it != rrs.end()) r += it->second;
+    return r;
+}

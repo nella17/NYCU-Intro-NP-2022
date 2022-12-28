@@ -15,4 +15,5 @@ public:
     bool add(Record);
     Records get(Question) const;
     Records get(TYPE, CLAS = CLAS::IN) const;
+    Records getIP(DN) const;
 };
