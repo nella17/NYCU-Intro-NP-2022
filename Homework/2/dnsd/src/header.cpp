@@ -2,6 +2,7 @@
 #include <arpa/inet.h>
 
 #include "header.hpp"
+#include "dn.hpp"
 #include "utils.hpp"
 
 Header::Header() {
@@ -22,8 +23,8 @@ inline uint32_t data2uint32(char*& data) {
     return ntohl(r);
 }
 
-void Header::parse(void* _msg) {
-    msg = (Message*)_msg;
+void Header::parse(const void* _msg) {
+    auto msg = (const Message*)_msg;
     memcpy(buf, msg, MSG_SIZE);
     ID      = ntohs(msg->ID);
     // TODO: Opcode = ntoh(msg->Opcode);
@@ -32,7 +33,7 @@ void Header::parse(void* _msg) {
     NSCOUNT = ntohs(msg->NSCOUNT);
     ARCOUNT = ntohs(msg->ARCOUNT);
     RRcount = ANCOUNT + NSCOUNT + ARCOUNT;
-    auto ptr = msg->buf;
+    auto ptr = (char*)msg->buf;
     question.clear();
     for(size_t i = 0; i < QDCOUNT; i++) {
         auto domain = data2dn(ptr);
@@ -58,13 +59,12 @@ void Header::parse(void* _msg) {
     }
 }
 
-void* Header::dump(bool create) {
+void* Header::dump() {
     std::string data{};
     // for(auto& q: question  ) data += q.dump();
     // for(auto& [sz,v]: ans)
     //     for(auto& a: v) data += a.dump();
-    if (create)
-        msg = (Message*)malloc(MSG_SIZE + data.size());
+    auto msg = (Message*)malloc(MSG_SIZE + data.size());
     memcpy(msg, buf, MSG_SIZE);
     msg->ID      = ntohs(ID);
     // TODO: msg->Opcode = hton(Opcode);

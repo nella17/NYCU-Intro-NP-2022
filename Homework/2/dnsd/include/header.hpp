@@ -21,7 +21,6 @@ constexpr size_t MSG_SIZE = 12;
 
 class Header {
 public:
-    Message* msg;
     union {
         char buf[MSG_SIZE];
         struct {
@@ -37,8 +36,8 @@ public:
     std::vector<Record> answer, authority, additional;
     std::vector<std::pair<uint16_t&,std::vector<Record>&>> ans;
     Header();
-    void parse(void*);
-    void* dump(bool = true);
+    void parse(const void*);
+    void* dump();
 };
 
 std::ostream& operator<<(std::ostream&, const Header&);
