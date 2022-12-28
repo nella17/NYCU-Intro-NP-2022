@@ -59,7 +59,7 @@ void Header::parse(const void* _msg) {
 }
 
 std::string Header::dump() {
-    QR = 1; Z = 0; RD = 0; RA = 0;
+    QR = 1; Z = 0;
     std::string data(MSG_SIZE, 0);
     auto msg = (Message*)data.c_str();
     memcpy(msg, buf, MSG_SIZE);

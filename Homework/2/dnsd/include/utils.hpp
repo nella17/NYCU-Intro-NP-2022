@@ -15,6 +15,10 @@ namespace fs = std::filesystem;
 
 constexpr int VERBOSE = 2;
 
+
+class NAME_ERROR {};
+class NOT_IMPLEMENTED {};
+
 void fail(const char* s);
 void bt();
 
@@ -32,6 +36,10 @@ std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b) {
     std::copy(a.begin(), a.end(), std::back_inserter(r));
     std::copy(b.begin(), b.end(), std::back_inserter(r));
     return r;
+}
+template<typename T>
+std::vector<T>& operator+=(std::vector<T>& a, const std::vector<T>& b) {
+    return a = a + b;
 }
 
 inline std::string& operator+=(std::string& s, uint16_t t) {

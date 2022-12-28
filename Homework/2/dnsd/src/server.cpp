@@ -72,9 +72,20 @@ std::string Server::query(std::string qs) {
     
     for(auto dn = q.domain; dn.size(); dn.pop_back()) {
         try {
-            auto rrs = config.get(dn).get(q);
-            for(auto rr: rrs)
-                header.answer.emplace_back(rr);
+            auto zone = config.get(dn);
+            header.AA = 1; header.RD = 1; header.RA = 0;
+            try {
+                auto rrs = zone.get(q);
+                for(auto rr: rrs)
+                    header.answer.emplace_back(rr);
+                if (q.type != TYPE::NS)
+                    header.authority += zone.get(TYPE::NS);
+            } catch (NAME_ERROR) {
+                header.RCODE = 3;
+                header.authority = zone.get(TYPE::SOA);
+            } catch (NOT_IMPLEMENTED) {
+                header.RCODE = 4;
+            }
             return header.dump();
         } catch (...) {
         }

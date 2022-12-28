@@ -37,6 +37,8 @@ Zone::Zone(DN _domain, fs::path zone_path): domain(_domain) {
     }
 
     in.close();
+
+    assert(rrs.count({ domain, TYPE::SOA, CLAS::IN }));
 }
 
 bool Zone::add(Record rr) {
@@ -58,4 +60,13 @@ Records Zone::get(Question q) const {
     if (it != rrs.end())
         return it->second;
 
+    throw NAME_ERROR();
+}
+
+Records Zone::get(TYPE type, CLAS clas) const {
+    auto it = rrs.find({ domain, type, clas });
+    if (it != rrs.end())
+        return it->second;
+
+    throw NOT_IMPLEMENTED();
 }
