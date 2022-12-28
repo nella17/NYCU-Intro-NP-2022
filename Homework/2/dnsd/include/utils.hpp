@@ -4,6 +4,9 @@
 #include <sys/socket.h>
 
 #include <string>
+#include <sstream>
+#include <string_view>
+#include <ranges>
 #include <vector>
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -41,10 +44,23 @@ inline std::string& operator+=(std::string& s, uint32_t t) {
     return s;
 }
 
-struct HEX {
+std::string hexdump(std::string);
+
+template<typename T>
+struct PAD {
     int pad;
-    std::string data;
+    T data;
 };
 
-std::string hexdump(std::string);
-std::ostream& operator<<(std::ostream&, HEX);
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, PAD<T> o) {
+    std::stringstream ss;
+    ss << o.data;
+    for(auto s: ss.view()
+            | std::ranges::views::split('\n')
+            | std::ranges::views::transform([](auto &&rng) {
+                return std::string_view(&*rng.begin(), std::ranges::distance(rng));
+            }) )
+        os << std::string(o.pad, ' ') << s << '\n';
+    return os;
+}

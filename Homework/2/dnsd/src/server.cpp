@@ -51,8 +51,6 @@ void Server::interactive() {
         }
 
         header.parse(buf);
-        if (VERBOSE >= 2)
-            std::cout<< HEX{ 3,  { buf, sz } } << header;
 
         if (send(connfd, buf, sz, 0) < 0)
             fail("send(connfd)");
@@ -65,7 +63,5 @@ void Server::interactive() {
             std::cout << "[*] answer from " << config.forwardIP << std::endl;
 
         header.parse(buf);
-        if (VERBOSE >= 2)
-            std::cout<< HEX{ 3,  { buf, sz } } << header;
     }
 }

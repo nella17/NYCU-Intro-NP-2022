@@ -9,8 +9,6 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-#include <string_view>
-#include <ranges>
 
 #include "utils.hpp"
 
@@ -85,15 +83,4 @@ std::string hexdump(std::string data) {
     }
     ss << "  " << std::dec << sz << '\n';
     return ss.str();
-}
-
-std::ostream& operator<<(std::ostream& os, HEX hex) {
-    auto dump = hexdump(hex.data);
-    for(auto s: dump
-            | std::ranges::views::split('\n')
-            | std::ranges::views::transform([](auto &&rng) {
-                return std::string_view(&*rng.begin(), std::ranges::distance(rng));
-            }) )
-        os << std::string(hex.pad, ' ') << s << '\n';
-    return os;
 }
