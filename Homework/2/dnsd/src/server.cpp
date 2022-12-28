@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include "server.hpp"
+#include "header.hpp"
 #include "utils.hpp"
 
 Server::Server(uint16_t listenport, const char config_path[]): config(config_path) {
@@ -33,6 +34,7 @@ void Server::interactive() {
     struct sockaddr_in cliaddr;
     socklen_t clilen;
     char buf[2048];
+    Header header;
     size_t sz;
     ssize_t ssz;
     while (true) {
@@ -48,18 +50,22 @@ void Server::interactive() {
             free(info);
         }
 
+        header.parse(buf);
         if (VERBOSE >= 2)
-            std::cout<< HEX{ 3,  { buf, sz } };
+            std::cout<< HEX{ 3,  { buf, sz } } << header;
 
         if (send(connfd, buf, sz, 0) < 0)
             fail("send(connfd)");
         if ((ssz = recv(connfd, buf, sizeof(buf), 0)) < 0) fail("recv(connfd)");
         sz = (size_t)ssz;
+
         if (sendto(listenfd, buf, sz, 0, (struct sockaddr*) &cliaddr, clilen) < 0)
             fail("sendto(listenfd)");
         if (VERBOSE >= 1)
             std::cout << "[*] answer from " << config.forwardIP << std::endl;
+
+        header.parse(buf);
         if (VERBOSE >= 2)
-            std::cout<< HEX{ 3,  { buf, sz } };
+            std::cout<< HEX{ 3,  { buf, sz } } << header;
     }
 }

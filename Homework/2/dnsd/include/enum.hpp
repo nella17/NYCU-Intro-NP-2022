@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 #include "magic_enum.hpp"
 using magic_enum::enum_name;
 using magic_enum::enum_cast;
@@ -21,8 +23,20 @@ enum class CLAS: uint16_t {
     HS = 4,
 };
 
-template<typename T>
-inline TYPE s2type(T s) { return enum_cast<TYPE>(std::string(s)).value(); }
+template<typename E, typename T>
+inline E v2e(T s) {
+    auto e = enum_cast<E>(s);
+    if (e.has_value())
+        return e.value();
+    constexpr auto entries = magic_enum::enum_entries<E>();
+    for(auto& [_e,_s]: entries)
+        std::cerr << ' ' << static_cast<magic_enum::underlying_type_t<E>>(_e) << ' ' << _s << '\n';
+    std::cerr << " Query: " << s << std::endl;
+    return E(0);
+}
 
 template<typename T>
-inline CLAS s2clas(T s) { return enum_cast<CLAS>(std::string(s)).value(); }
+inline TYPE v2type(T s) { return v2e<TYPE>(s); }
+
+template<typename T>
+inline CLAS v2clas(T s) { return v2e<CLAS>(s); }

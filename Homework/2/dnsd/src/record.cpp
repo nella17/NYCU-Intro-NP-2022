@@ -10,6 +10,9 @@
 #include "record.hpp"
 #include "utils.hpp"
 
+Question::Question(DN _domain, TYPE _type, CLAS _clas):
+    domain(_domain), type(_type), clas(_clas) {}
+
 Record::Record(DN _domain, TYPE _type, CLAS _clas, uint32_t _ttl, std::string _data):
     domain(_domain), type(_type), clas(_clas), ttl(_ttl), data(_data) {}
 
@@ -71,6 +74,12 @@ std::ostream& operator<<(std::ostream& os, const DN& domain) {
         os << label << '.';
     return os;
 }
+std::ostream& operator<<(std::ostream& os, const Question& q) {
+    os << q.domain
+        << ' ' << enum_name(q.type)
+        << ' ' << enum_name(q.clas);
+    return os;
+}
 std::ostream& operator<<(std::ostream& os, const Record& rr) {
     os << rr.domain
         << ' ' << enum_name(rr.type)
@@ -101,4 +110,16 @@ std::string dn2data(DN domain) {
     }
     data += '\0';
     return data;
+}
+
+DN data2dn(char*& data) {
+    DN domain{};
+    while (*data) {
+        auto sz = (size_t)(uint8_t)*data;
+        domain.emplace_back(data + 1, sz);
+        data += 1 + sz;
+    }
+    data += 1;
+    std::reverse(domain.begin(), domain.end());
+    return domain;
 }
