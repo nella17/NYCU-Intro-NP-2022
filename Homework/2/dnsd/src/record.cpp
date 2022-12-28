@@ -25,7 +25,7 @@ std::string Question::dump() {
 Record::Record(DN _domain, TYPE _type, CLAS _clas, uint32_t _ttl, std::string _data):
     Question(_domain, _type, _clas), ttl(_ttl), data(_data) {}
 
-inline std::string parseSOA(const std::string data) {
+inline std::string dumpSOA(const std::string data) {
     std::stringstream ss(data);
     char MNAME[256], RNAME[256];
     uint32_t SERIAL, REFRESH, RETRY, EXPIRE, MINIMUM;
@@ -41,7 +41,7 @@ inline std::string parseSOA(const std::string data) {
     return rdata;
 }
 
-inline std::string parseMX(const std::string data) {
+inline std::string dumpMX(const std::string data) {
     std::stringstream ss(data);
     uint16_t PREFERENCE;
     char EXCHANGE[256];
@@ -67,13 +67,13 @@ std::string Record::rdata() {
             ret = dn2data(s2dn(data));
             break;
         case TYPE::SOA:
-            ret = parseSOA(data);
+            ret = dumpSOA(data);
             break;
         case TYPE::MX:
-            ret = parseMX(data);
+            ret = dumpMX(data);
             break;
         case TYPE::TXT:
-            ret = data;
+            ret = (char)(uint8_t)data.size() + data;
     }
     return ret;
 }

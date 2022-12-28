@@ -13,7 +13,11 @@ namespace fs = std::filesystem;
 
 #include "enum.hpp"
 
+#ifdef DEBUG
 constexpr int VERBOSE = 2;
+#else
+constexpr int VERBOSE = 1;
+#endif
 
 class SERVER_FAILURE {};
 class NAME_ERROR {};
