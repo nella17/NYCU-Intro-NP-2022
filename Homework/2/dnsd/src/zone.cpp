@@ -74,7 +74,7 @@ Records Zone::get(TYPE type, CLAS clas) const {
     if (it != rrs.end())
         return it->second;
 
-    throw NOT_IMPLEMENTED();
+    throw NAME_ERROR();
 }
 
 Records Zone::getIP(DN dn) const {

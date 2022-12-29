@@ -71,6 +71,8 @@ std::string Server::query(std::string qs) {
         return query(header);
     } catch (FORWARD) {
         goto Forward;
+    } catch (FORMAT_ERROR) {
+        header.RCODE = 1;
     } catch (NOT_IMPLEMENTED) {
         header.RCODE = 4;
     } catch (...) {

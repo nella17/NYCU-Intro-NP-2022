@@ -19,6 +19,7 @@ constexpr int VERBOSE = 2;
 constexpr int VERBOSE = 1;
 #endif
 
+class FORMAT_ERROR {};
 class SERVER_FAILURE {};
 class NAME_ERROR {};
 class NOT_IMPLEMENTED {};

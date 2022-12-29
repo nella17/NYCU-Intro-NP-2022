@@ -71,7 +71,7 @@ std::string inet_pton(int af, std::string data) {
     char buf[sz];
     bzero(buf, sz);
     if (inet_pton(af, data.c_str(), buf) != 1)
-        throw NOT_IMPLEMENTED();
+        throw FORMAT_ERROR();
     return { buf, sz };
 }
 
