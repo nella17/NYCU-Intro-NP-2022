@@ -1,6 +1,6 @@
 PROGRAM		= dnsd
 PORT		?= 1053
-CONFIG		?= ./conf/config.txt
+CONFIG		?= ./conf/example/config.txt
 
 SDIR		:= src
 IDIR		:= include
