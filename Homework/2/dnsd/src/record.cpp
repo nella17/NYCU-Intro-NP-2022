@@ -66,28 +66,22 @@ inline std::string dumpMX(const std::string data) {
 
 
 std::string Record::rdata() {
-    std::string ret;
     switch (type) {
         case TYPE::A:
-            ret = inet_pton(AF_INET, data);
-            break;
+            return inet_pton(AF_INET, data);
         case TYPE::AAAA:
-            ret = inet_pton(AF_INET6, data);
-            break;
+            return inet_pton(AF_INET6, data);
         case TYPE::NS:
         case TYPE::CNAME:
-            ret = dn2data(s2dn(data));
-            break;
+            return dn2data(s2dn(data));
         case TYPE::SOA:
-            ret = dumpSOA(data);
-            break;
+            return dumpSOA(data);
         case TYPE::MX:
-            ret = dumpMX(data);
-            break;
+            return dumpMX(data);
         case TYPE::TXT:
-            ret = (char)(uint8_t)data.size() + data;
+            return (char)(uint8_t)data.size() + data;
     }
-    return ret;
+    return "";
 }
 
 std::string Record::dump() {

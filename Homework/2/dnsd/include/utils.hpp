@@ -22,6 +22,7 @@ constexpr int VERBOSE = 1;
 class SERVER_FAILURE {};
 class NAME_ERROR {};
 class NOT_IMPLEMENTED {};
+class FORWARD {};
 
 void fail(const char* s);
 void bt();

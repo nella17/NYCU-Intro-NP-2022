@@ -67,13 +67,36 @@ std::string Server::query(std::string qs) {
         std::cout<< PAD{ 3, hexdump(qs) } << PAD{ 6, header };
 
     // TODO: handle multiple question
-    assert(header.QDCOUNT == 1);
+    try {
+        return query(header);
+    } catch (FORWARD) {
+        goto Forward;
+    } catch (NOT_IMPLEMENTED) {
+        header.RCODE = 4;
+    } catch (...) {
+        std::cerr << "unknown error" << std::endl;
+        header.RCODE = 2;
+    }
+
+    return header.dump();
+
+Forward:
+    if (VERBOSE >= 1)
+        std::cout << "[*] answer from " << config.forwardIP << std::endl;
+
+    return forward(qs);
+}
+
+std::string Server::query(Header& header) {
+    if (header.QDCOUNT != 1)
+        throw NOT_IMPLEMENTED();
+
     auto q = header.question[0];
-    
     for(auto dn = q.domain; dn.size(); dn.pop_back()) {
         if (config.has(dn)) {
             auto zone = config.get(dn);
             header.AA = 1; header.RD = 1; header.RA = 0;
+            header.RCODE = 0;
             try {
                 auto rrs = zone.get(q);
                 for(auto rr: rrs) {
@@ -85,20 +108,12 @@ std::string Server::query(std::string qs) {
             } catch (NAME_ERROR) {
                 header.RCODE = 3;
                 header.authority = zone.get(TYPE::SOA);
-            } catch (NOT_IMPLEMENTED) {
-                header.RCODE = 4;
-            } catch (...) {
-                std::cerr << "unknown error" << std::endl;
-                header.RCODE = 2;
             }
             return header.dump();
         }
     }
 
-    if (VERBOSE >= 1)
-        std::cout << "[*] answer from " << config.forwardIP << std::endl;
-
-    return forward(qs);
+    throw FORWARD();
 }
 
 std::string Server::forward(std::string qs) {
