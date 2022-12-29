@@ -70,7 +70,8 @@ std::string inet_pton(int af, std::string data) {
     if (!sz) return nullptr;
     char buf[sz];
     bzero(buf, sz);
-    assert(inet_pton(af, data.c_str(), buf) == 1);
+    if (inet_pton(af, data.c_str(), buf) != 1)
+        throw NOT_IMPLEMENTED();
     return { buf, sz };
 }
 

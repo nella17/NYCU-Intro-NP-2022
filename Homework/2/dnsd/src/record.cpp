@@ -35,7 +35,9 @@ inline DN parse(TYPE type, std::string data) {
 }
 
 Record::Record(DN _domain, TYPE _type, CLAS _clas, uint32_t _ttl, std::string _data):
-    Question(_domain, _type, _clas), ttl(_ttl), data(_data), datadn(parse(_type, _data)) {}
+    Question(_domain, _type, _clas), ttl(_ttl), data(_data), datadn(parse(_type, _data)) {
+    dump();
+}
 
 inline std::string dumpSOA(const std::string data) {
     std::stringstream ss(data);
