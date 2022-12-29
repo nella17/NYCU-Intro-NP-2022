@@ -33,7 +33,7 @@ Zone::Zone(DN _domain, fs::path zone_path): domain(_domain) {
         if (VERBOSE >= 1)
             std::cout << "   " << rr << std::endl;
         if (VERBOSE >= 2)
-            std::cout << PAD{ 6, hexdump(rr.rdata()) };
+            std::cout << PAD{ 6, hexdump(rr.rdata) };
     }
 
     in.close();

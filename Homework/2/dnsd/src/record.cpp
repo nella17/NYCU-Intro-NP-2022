@@ -35,55 +35,8 @@ inline DN parse(TYPE type, std::string data) {
 }
 
 Record::Record(DN _domain, TYPE _type, CLAS _clas, uint32_t _ttl, std::string _data):
-    Question(_domain, _type, _clas), ttl(_ttl), data(_data), datadn(parse(_type, _data)) {
+    Question(_domain, _type, _clas), ttl(_ttl), data(_data), rdata(Rdata(_type, _data)), datadn(parse(_type, _data)) {
     dump();
-}
-
-inline std::string dumpSOA(const std::string data) {
-    std::stringstream ss(data);
-    char MNAME[256], RNAME[256];
-    uint32_t SERIAL, REFRESH, RETRY, EXPIRE, MINIMUM;
-    ss >> MNAME >> RNAME >> SERIAL >> REFRESH >> RETRY >> EXPIRE >> MINIMUM;
-    std::string rdata = "";
-    rdata += dn2data(s2dn(MNAME));
-    rdata += dn2data(s2dn(RNAME));
-    rdata += SERIAL;
-    rdata += REFRESH;
-    rdata += RETRY;
-    rdata += EXPIRE;
-    rdata += MINIMUM;
-    return rdata;
-}
-
-inline std::string dumpMX(const std::string data) {
-    std::stringstream ss(data);
-    uint16_t PREFERENCE;
-    char EXCHANGE[256];
-    ss >> PREFERENCE >> EXCHANGE;
-    std::string rdata = "";
-    rdata += PREFERENCE;
-    rdata += dn2data(s2dn(EXCHANGE));
-    return rdata;
-}
-
-
-std::string Record::rdata() {
-    switch (type) {
-        case TYPE::A:
-            return inet_pton(AF_INET, data);
-        case TYPE::AAAA:
-            return inet_pton(AF_INET6, data);
-        case TYPE::NS:
-        case TYPE::CNAME:
-            return dn2data(s2dn(data));
-        case TYPE::SOA:
-            return dumpSOA(data);
-        case TYPE::MX:
-            return dumpMX(data);
-        case TYPE::TXT:
-            return (char)(uint8_t)data.size() + data;
-    }
-    return "";
 }
 
 std::string Record::dump() {
@@ -91,9 +44,8 @@ std::string Record::dump() {
     r += (uint16_t)type;
     r += (uint16_t)clas;
     r += ttl;
-    auto rd = rdata();
-    r += (uint16_t)rd.size();
-    r += rd;
+    r += (uint16_t)rdata.size();
+    r += rdata;
     return r;
 }
 
@@ -133,4 +85,50 @@ Records niplike(DN domain, DN base) {
         std::cout << "NIP: " << domain << " -> " << data << std::endl;
     Record rr(domain, TYPE::A, CLAS::IN, 1, data);
     return { rr };
+}
+
+inline std::string dumpSOA(const std::string data) {
+    std::stringstream ss(data);
+    char MNAME[256], RNAME[256];
+    uint32_t SERIAL, REFRESH, RETRY, EXPIRE, MINIMUM;
+    ss >> MNAME >> RNAME >> SERIAL >> REFRESH >> RETRY >> EXPIRE >> MINIMUM;
+    std::string rdata = "";
+    rdata += dn2data(s2dn(MNAME));
+    rdata += dn2data(s2dn(RNAME));
+    rdata += SERIAL;
+    rdata += REFRESH;
+    rdata += RETRY;
+    rdata += EXPIRE;
+    rdata += MINIMUM;
+    return rdata;
+}
+
+inline std::string dumpMX(const std::string data) {
+    std::stringstream ss(data);
+    uint16_t PREFERENCE;
+    char EXCHANGE[256];
+    ss >> PREFERENCE >> EXCHANGE;
+    std::string rdata = "";
+    rdata += PREFERENCE;
+    rdata += dn2data(s2dn(EXCHANGE));
+    return rdata;
+}
+
+std::string Rdata(TYPE type, std::string data) {
+    switch (type) {
+        case TYPE::A:
+            return inet_pton(AF_INET, data);
+        case TYPE::AAAA:
+            return inet_pton(AF_INET6, data);
+        case TYPE::NS:
+        case TYPE::CNAME:
+            return dn2data(s2dn(data));
+        case TYPE::SOA:
+            return dumpSOA(data);
+        case TYPE::MX:
+            return dumpMX(data);
+        case TYPE::TXT:
+            return (char)(uint8_t)data.size() + data;
+    }
+    return "";
 }
